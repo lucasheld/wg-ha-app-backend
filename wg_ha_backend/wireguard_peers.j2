@@ -1,0 +1,36 @@
+---
+wireguard:
+  peers:
+    {%- for client in clients %}
+    - public_key: {{client.public_key}}
+      allowed_ips:
+        {%- for allowed_ip in client.allowed_ips %}
+        - {{allowed_ip}}
+        {%- endfor %}
+      {%- if client.tags %}
+      tags:
+      {%- for tag in client.tags %}
+        - {{tag}}
+      {%- endfor %}
+      {%- endif %}
+      {%- if client.services %}
+      services:
+      {%- for service in client.services %}
+        - rules:
+            {%- for rule in service.rules %}
+            - protocol: {{rule.protocol}}
+              {%- if rule.ports %}
+              ports:
+              {%- for port in rule.ports %}
+                - {{port}}
+              {%- endfor %}
+              {%- endif %}
+            {%- endfor %}
+          allowed_tags:
+            {%- for allowed_tag in service.allowed_tags %}
+            - {{allowed_tag}}
+            {%- endfor %}
+      {%- endfor %}
+      {%- endif %}
+    {%- endfor %}
+

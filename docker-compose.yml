@@ -1,0 +1,75 @@
+version: '3'
+
+services:
+  # redis is used by app and celery to exchange background task information
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    environment:
+      REDIS_APPENDONLY: "yes"
+    volumes:
+      - redis:/data
+    expose:
+      - 6379
+
+  # this service builds the image used by celery and app and exits afterwards
+  build:
+    image: app
+    build: .
+
+  # celery executes playbooks in the background
+  # we need to pass through the ansible project path that contains the playbooks
+  # and the ssh keys to connect to remote hosts
+  celery:
+    image: app
+    restart: unless-stopped
+    environment:
+      ANSIBLE_PROJECT_PATH: /ansible
+      CELERY_BROKER_URL: redis://redis
+      CELERY_RESULT_BACKEND: redis://redis
+      ANSIBLE_VAULT_PASSWORD_FILE: "/.vault_key"
+    volumes:
+      - /home/ansible/wg-ha-app/ansible:/ansible:ro
+      - /home/ansible/.ssh:/home/abc/.ssh/:ro
+      - /home/lucas/.vault_key:/.vault_key:ro
+    user: abc
+    depends_on:
+      - build
+      - redis
+    command: celery --app wg_ha_backend.celery worker --loglevel=info
+
+  # flower provides a task api for celery
+  flower:
+    image: app
+    restart: unless-stopped
+    ports:
+      - 5555:5555
+    environment:
+      CELERY_BROKER_URL: redis://redis
+      CELERY_RESULT_BACKEND: redis://redis
+    depends_on:
+      - build
+      - redis
+    command: celery --app wg_ha_backend.celery flower --persistent --loglevel=info
+
+  # flask provides the api and forwards playbook tasks to the celery service
+  flask:
+    image: app
+    restart: unless-stopped
+    ports:
+      - 5000:5000
+    environment:
+      ANSIBLE_PROJECT_PATH: /ansible
+      CELERY_BROKER_URL: redis://redis
+      CELERY_RESULT_BACKEND: redis://redis
+      ANSIBLE_VAULT_PASSWORD_FILE: "/.vault_key"
+    volumes:
+      - /home/ansible/wg-ha-app/ansible:/ansible
+      - /home/lucas/.vault_key:/.vault_key:ro
+    depends_on:
+      - build
+      - celery
+    command: gunicorn --bind 0.0.0.0:5000 wg_ha_backend:app
+
+volumes:
+  redis:

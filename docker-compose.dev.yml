@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  # enables live reload
+  celery:
+    volumes:
+      - .:/usr/src/app
+      - /home/lucas/Projects/wg-ha-app/ansible:/ansible:ro
+    command: watchmedo auto-restart --directory=./ --pattern=*.py --recursive -- celery --app wg_ha_backend.celery worker --loglevel=info
+
+  # enables live reload
+  flask:
+    user: 1000:985
+    volumes:
+      - .:/usr/src/app
+      - /home/lucas/Projects/wg-ha-app/ansible:/ansible
+    command: python run.py
