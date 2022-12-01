@@ -94,8 +94,30 @@ def render_ansible_config_template():
     return rendered
 
 
-def check_public_key_exists(public_key):
+# def check_public_key_exists(public_key):
+#     for client in clients:
+#         if client["public_key"] == public_key:
+#             return True
+#     return False
+
+
+def check_private_key_exists(private_key):
     for client in clients:
-        if client["public_key"] == public_key:
+        if client["private_key"] == private_key:
             return True
     return False
+
+
+def generate_wireguard_config(interface, peers):
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
+    template = env.get_template("wireguard_config.j2")
+    rendered = template.render(
+        interface=interface,
+        peers=peers
+    )
+    return rendered
+
+
+def allowed_ips_to_interface_address(allowed_ips):
+    addresses = [i.replace("/32", "/24").replace("/128", "/112") for i in allowed_ips]
+    return ", ".join(addresses)

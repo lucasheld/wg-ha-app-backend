@@ -7,6 +7,8 @@ RUN set -x \
     && apk add --no-cache build-base libressl-dev musl-dev libffi-dev \
     # requirements for ansible
     && apk add --no-cache openssh-client sshpass \
+    # requirements for backend \
+    && apk add --no-cache wireguard-tools \
     # add non root user
     && addgroup -g 1000 -S abc \
     && adduser -u 1000 -S abc -G abc

@@ -1,0 +1,12 @@
+[Interface]
+Address = {{interface.address}}
+PrivateKey = {{interface.private_key}}
+
+{%- for peer in peers %}
+
+[Peer]
+PublicKey = {{peer.public_key}}
+AllowedIPs = 10.0.0.0/16, fdc9:281f:04d7:9ee9::0:0/96
+Endpoint = {{peer.endpoint}}
+PersistentKeepalive = 21
+{%- endfor %}

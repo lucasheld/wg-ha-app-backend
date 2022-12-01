@@ -6,12 +6,13 @@ from config import ANSIBLE_PROJECT_PATH
 
 from wg_ha_backend import app
 from wg_ha_backend.tasks import run_playbook
-from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, render_ansible_config_template, check_public_key_exists
-from wg_ha_backend.database import server_public_key, server_endpoint, clients
+from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, render_ansible_config_template, \
+    check_private_key_exists, generate_wireguard_config, allowed_ips_to_interface_address, Wireguard
+from wg_ha_backend.database import server_public_key, server_private_key, server_endpoint, clients, server_interface_ips
 
 
 @app.route("/api/playbook", methods=["POST"])
-def route_playbook():
+def route_playbook_post():
     data = request.json
     playbook = data.get("playbook")
     extra_vars = data.get("extra_vars")
@@ -20,7 +21,7 @@ def route_playbook():
 
 
 @app.route('/api/playbook/<task_id>')
-def route_playbook_status(task_id):
+def route_playbook_status_get(task_id):
     task = run_playbook.AsyncResult(task_id)
     if task.state == 'FAILURE':
         response = {
@@ -39,7 +40,7 @@ def route_playbook_status(task_id):
 
 
 @app.route("/api/inventory")
-def route_inventory():
+def route_inventory_get():
     command = [
         "ansible-inventory",
         "--list"
@@ -70,18 +71,22 @@ def route_client_get():
 @app.route("/api/client", methods=["POST"])
 def route_client_post():
     data = request.json
-    client_public_key = data.get("public_key")
+    # client_public_key = data.get("public_key")
+    client_private_key = data.get("private_key")
     client_tags = data.get("tags")
     client_services = data.get("services")
 
-    if check_public_key_exists(client_public_key):
+    if check_private_key_exists(client_private_key):
         raise ValueError("another client with the same public key already exists")
 
     client_interface_ips = generate_next_virtual_client_ips()
     client_allowed_ips = generate_allowed_ips(client_interface_ips)
 
+    client_public_key = Wireguard.gen_public_key(client_private_key)
+
     clients.append({
         "public_key": client_public_key,
+        "private_key": client_private_key,
         "allowed_ips": client_allowed_ips,
         "tags": client_tags,
         "services": client_services
@@ -107,3 +112,25 @@ def route_client_post():
     # PersistentKeepalive = 21
 
     return {}
+
+
+@app.route("/api/config/<path:public_key>")
+def route_config_get(public_key):
+    client = None
+    for i in clients:
+        if i["public_key"] == public_key:
+            client = i
+
+    # peer interface
+    # client_private_key = "0000000000000000000000000000000000000000000="
+    interface = {
+        "address": allowed_ips_to_interface_address(client["allowed_ips"]),
+        "private_key": client["private_key"],
+    }
+    peers = [{
+        "public_key": server_public_key,
+        "endpoint": server_endpoint,
+    }]
+
+    wireguard_config = generate_wireguard_config(interface=interface, peers=peers)
+    return wireguard_config
