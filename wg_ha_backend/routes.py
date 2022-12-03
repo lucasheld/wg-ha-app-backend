@@ -72,6 +72,7 @@ def route_client_get():
 def route_client_post():
     data = request.json
     # client_public_key = data.get("public_key")
+    title = data.get("title")
     client_private_key = data.get("private_key")
     client_tags = data.get("tags")
     client_services = data.get("services")
@@ -85,6 +86,7 @@ def route_client_post():
     client_public_key = Wireguard.gen_public_key(client_private_key)
 
     clients.append({
+        "title": title,
         "public_key": client_public_key,
         "private_key": client_private_key,
         "allowed_ips": client_allowed_ips,
@@ -97,19 +99,7 @@ def route_client_post():
     with open(ansible_config_path, "w") as f:
         f.write(ansible_config)
 
-    # TODO: run ansible
-    run_playbook.delay(playbook="test.yml")
-
-    # TODO: display user the client config
-    # [Interface]
-    # Address = {", ".join(client_interface_ips)}
-    # PrivateKey = {client_private_key}
-    #
-    # [Peer]
-    # PublicKey = {server_public_key}
-    # AllowedIPs = 10.0.0.0/16, fdc9:281f:04d7:9ee9::0:0/96
-    # Endpoint = {server_endpoint}
-    # PersistentKeepalive = 21
+    run_playbook.delay(playbook="apply-config.yml")
 
     return {}
 

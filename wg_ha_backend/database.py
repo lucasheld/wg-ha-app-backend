@@ -10,6 +10,7 @@ server_endpoint = "116.202.189.178:51820"
 
 clients = [
     {
+        "title": "DNS-Server",
         "private_key": "oAiwQw/ITK9YThiD1JD9QXNLqie7Pyyh01W37Xj46l8=",
         "public_key": "r/Nt83mKnsVxMBU09FZaLUTAudrEodk7oXTdmf/uHyY=",
         "allowed_ips": [
