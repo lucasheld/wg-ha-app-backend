@@ -7,7 +7,7 @@ from config import ANSIBLE_PROJECT_PATH
 from wg_ha_backend import app
 from wg_ha_backend.tasks import run_playbook
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, render_ansible_config_template, \
-    check_private_key_exists, generate_wireguard_config, allowed_ips_to_interface_address, Wireguard
+    check_private_key_exists, generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_client
 from wg_ha_backend.database import server_public_key, server_private_key, server_endpoint, clients, server_interface_ips
 
 
@@ -104,12 +104,16 @@ def route_client_post():
     return {}
 
 
+@app.route("/api/client/<path:public_key>", methods=["DELETE"])
+def route_client_delete(public_key):
+    client = get_client(public_key)
+    clients.remove(client)
+    return {}
+
+
 @app.route("/api/config/<path:public_key>")
 def route_config_get(public_key):
-    client = None
-    for i in clients:
-        if i["public_key"] == public_key:
-            client = i
+    client = get_client(public_key)
 
     # peer interface
     # client_private_key = "0000000000000000000000000000000000000000000="

@@ -121,3 +121,9 @@ def generate_wireguard_config(interface, peers):
 def allowed_ips_to_interface_address(allowed_ips):
     addresses = [i.replace("/32", "/24").replace("/128", "/112") for i in allowed_ips]
     return ", ".join(addresses)
+
+
+def get_client(public_key):
+    for client in clients:
+        if client["public_key"] == public_key:
+            return client
