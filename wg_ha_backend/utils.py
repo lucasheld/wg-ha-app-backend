@@ -1,10 +1,14 @@
-import re
-import json
-import jinja2
 import ipaddress
+import json
+import os
+import re
 import subprocess
 
+import jinja2
+
+from config import ANSIBLE_PROJECT_PATH
 from wg_ha_backend.database import clients, server_interface_ips
+from wg_ha_backend.tasks import run_playbook
 
 
 def get_ip_version(ip_address):
@@ -127,3 +131,21 @@ def get_client(public_key):
     for client in clients:
         if client["public_key"] == public_key:
             return client
+
+
+def render_and_run_ansible():
+    ansible_config = render_ansible_config_template()
+
+    ansible_config_path = os.path.join(ANSIBLE_PROJECT_PATH, "group_vars", "all", "wireguard_peers")
+    with open(ansible_config_path, "w") as f:
+        f.write(ansible_config)
+
+    run_playbook.delay(playbook="apply-config.yml")
+
+
+def get_changed_client_keys(client_old, client_new):
+    changed = []
+    for i in client_new:
+        if i not in client_old or client_old[i] != client_new[i]:
+            changed.append(i)
+    return changed

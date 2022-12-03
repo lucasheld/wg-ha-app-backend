@@ -1,14 +1,15 @@
 import json
-import os.path
 import subprocess
-from flask import jsonify, request, url_for
-from config import ANSIBLE_PROJECT_PATH
 
+from flask import jsonify, request, url_for
+
+from config import ANSIBLE_PROJECT_PATH
 from wg_ha_backend import app
+from wg_ha_backend.database import server_public_key, server_endpoint, clients
 from wg_ha_backend.tasks import run_playbook
-from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, render_ansible_config_template, \
-    check_private_key_exists, generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_client
-from wg_ha_backend.database import server_public_key, server_private_key, server_endpoint, clients, server_interface_ips
+from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, check_private_key_exists, \
+    generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_client, \
+    render_and_run_ansible, get_changed_client_keys
 
 
 @app.route("/api/playbook", methods=["POST"])
@@ -71,43 +72,52 @@ def route_client_get():
 @app.route("/api/client", methods=["POST"])
 def route_client_post():
     data = request.json
-    # client_public_key = data.get("public_key")
-    title = data.get("title")
-    client_private_key = data.get("private_key")
-    client_tags = data.get("tags")
-    client_services = data.get("services")
 
-    if check_private_key_exists(client_private_key):
+    private_key = data.get("private_key")
+    if check_private_key_exists(private_key):
         raise ValueError("another client with the same public key already exists")
 
-    client_interface_ips = generate_next_virtual_client_ips()
-    client_allowed_ips = generate_allowed_ips(client_interface_ips)
+    interface_ips = generate_next_virtual_client_ips()
+    allowed_ips = generate_allowed_ips(interface_ips)
+    public_key = Wireguard.gen_public_key(private_key)
 
-    client_public_key = Wireguard.gen_public_key(client_private_key)
-
-    clients.append({
-        "title": title,
-        "public_key": client_public_key,
-        "private_key": client_private_key,
-        "allowed_ips": client_allowed_ips,
-        "tags": client_tags,
-        "services": client_services
+    client = data
+    client.update({
+        "public_key": public_key,
+        "allowed_ips": allowed_ips,
     })
-    ansible_config = render_ansible_config_template()
+    clients.append(client)
 
-    ansible_config_path = os.path.join(ANSIBLE_PROJECT_PATH, "group_vars", "all", "wireguard_peers")
-    with open(ansible_config_path, "w") as f:
-        f.write(ansible_config)
+    render_and_run_ansible()
+    return {}
 
-    run_playbook.delay(playbook="apply-config.yml")
 
+@app.route("/api/client", methods=["PATCH"])
+def route_client_patch():
+    data = request.json
+
+    private_key = data.get("private_key")
+    public_key = Wireguard.gen_public_key(private_key)
+    client = get_client(public_key)
+
+    changed_keys = get_changed_client_keys(client, data)
+    if client and changed_keys:
+        # update the client in the database
+        for i in data:
+            client[i] = data[i]
+
+        # do not run the ansible playbook if only the title has changed
+        if changed_keys != ["title"]:
+            render_and_run_ansible()
     return {}
 
 
 @app.route("/api/client/<path:public_key>", methods=["DELETE"])
 def route_client_delete(public_key):
     client = get_client(public_key)
-    clients.remove(client)
+    if client:
+        clients.remove(client)
+        render_and_run_ansible()
     return {}
 
 
