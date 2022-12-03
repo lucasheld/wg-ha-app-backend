@@ -3,10 +3,6 @@ FROM python:3.11-alpine
 WORKDIR /usr/src/app
 
 RUN set -x \
-    # requirements for cryptography (installed by ansible)
-    && apk add --no-cache build-base libressl-dev musl-dev libffi-dev \
-    # requirements for ansible
-    && apk add --no-cache openssh-client sshpass \
     # requirements for backend \
     && apk add --no-cache wireguard-tools \
     # add non root user
