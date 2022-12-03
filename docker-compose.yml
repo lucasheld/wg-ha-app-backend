@@ -13,7 +13,7 @@ services:
       - 6379
 
   # this service builds the image used by celery and app and exits afterwards
-  build:
+  build-app:
     image: app
     build: .
 
@@ -21,7 +21,9 @@ services:
   # we need to pass through the ansible project path that contains the playbooks
   # and the ssh keys to connect to remote hosts
   celery:
-    image: app
+    build:
+      context: .
+      dockerfile: Dockerfile.celery
     restart: unless-stopped
     environment:
       ANSIBLE_PROJECT_PATH: /ansible
@@ -34,7 +36,7 @@ services:
       - /home/lucas/.vault_key:/.vault_key:ro
     user: abc
     depends_on:
-      - build
+      - build-app
       - redis
     command: celery --app wg_ha_backend.celery worker --loglevel=info
 
@@ -48,7 +50,7 @@ services:
       CELERY_BROKER_URL: redis://redis
       CELERY_RESULT_BACKEND: redis://redis
     depends_on:
-      - build
+      - build-app
       - redis
     command: celery --app wg_ha_backend.celery flower --persistent --loglevel=info
 
@@ -67,7 +69,7 @@ services:
       - /home/ansible/wg-ha-app/ansible:/ansible
       - /home/lucas/.vault_key:/.vault_key:ro
     depends_on:
-      - build
+      - build-app
       - celery
     command: gunicorn --bind 0.0.0.0:5000 wg_ha_backend:app
 

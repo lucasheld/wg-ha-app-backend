@@ -146,6 +146,6 @@ def render_and_run_ansible():
 def get_changed_client_keys(client_old, client_new):
     changed = []
     for i in client_new:
-        if i not in client_old or client_old[i] != client_new[i]:
+        if client_new[i] != client_old.get(i):
             changed.append(i)
     return changed
