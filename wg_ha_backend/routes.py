@@ -1,15 +1,15 @@
 import json
 import subprocess
 
-from flask import jsonify, request, url_for
+from bson import ObjectId
+from flask import jsonify, request, url_for, Response
 
 from config import ANSIBLE_PROJECT_PATH
-from wg_ha_backend import app
-from wg_ha_backend.database import server_public_key, server_endpoint, clients
+from wg_ha_backend import app, db
 from wg_ha_backend.tasks import run_playbook
-from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, check_private_key_exists, \
-    generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_client, \
-    render_and_run_ansible, get_changed_client_keys
+from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
+    generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, render_and_run_ansible, \
+    get_changed_client_keys, dump, dumps
 
 
 @app.route("/api/playbook", methods=["POST"])
@@ -66,19 +66,18 @@ def route_inventory_get():
 
 @app.route("/api/client")
 def route_client_get():
-    return clients
+    r = db.clients.find()
+    return Response(dumps(r), status=200, mimetype='application/json')
 
 
 @app.route("/api/client", methods=["POST"])
 def route_client_post():
     data = request.json
 
-    private_key = data.get("private_key")
-    if check_private_key_exists(private_key):
-        raise ValueError("another client with the same public key already exists")
-
     interface_ips = generate_next_virtual_client_ips()
     allowed_ips = generate_allowed_ips(interface_ips)
+
+    private_key = data.get("private_key")
     public_key = Wireguard.gen_public_key(private_key)
 
     client = data
@@ -86,25 +85,24 @@ def route_client_post():
         "public_key": public_key,
         "allowed_ips": allowed_ips,
     })
-    clients.append(client)
+    db.clients.insert_one(client)
 
     render_and_run_ansible()
     return {}
 
 
-@app.route("/api/client", methods=["PATCH"])
-def route_client_patch():
-    data = request.json
+@app.route("/api/client/<id>", methods=["PATCH"])
+def route_client_patch(id):
+    client = db.clients.find_one({"_id": ObjectId(id)})
+    if not client:
+        return Response({}, status=404, mimetype='application/json')
 
-    private_key = data.get("private_key")
-    public_key = Wireguard.gen_public_key(private_key)
-    client = get_client(public_key)
+    data = request.json
+    data.pop("id")
 
     changed_keys = get_changed_client_keys(client, data)
-    if client and changed_keys:
-        # update the client in the database
-        for i in data:
-            client[i] = data[i]
+    if changed_keys:
+        db.clients.update_one({"_id": ObjectId(id)}, {'$set': data})
 
         # do not run the ansible playbook if only the title has changed
         if changed_keys != ["title"]:
@@ -112,28 +110,32 @@ def route_client_patch():
     return {}
 
 
-@app.route("/api/client/<path:public_key>", methods=["DELETE"])
-def route_client_delete(public_key):
-    client = get_client(public_key)
-    if client:
-        clients.remove(client)
+@app.route("/api/client/<id>", methods=["DELETE"])
+def route_client_delete(id):
+    r = db.clients.delete_one({"_id": ObjectId(id)})
+    if r.deleted_count:
         render_and_run_ansible()
-    return {}
+        return Response({}, status=200, mimetype='application/json')
+    return Response({}, status=404, mimetype='application/json')
 
 
-@app.route("/api/config/<path:public_key>")
-def route_config_get(public_key):
-    client = get_client(public_key)
+@app.route("/api/config/<id>")
+def route_config_get(id):
+    client = db.clients.find_one({"_id": ObjectId(id)})
+    if not client:
+        return Response({}, status=404, mimetype='application/json')
+
+    server = db.server.find_one({})
+    server = dump(server)
 
     # peer interface
-    # client_private_key = "0000000000000000000000000000000000000000000="
     interface = {
         "address": allowed_ips_to_interface_address(client["allowed_ips"]),
         "private_key": client["private_key"],
     }
     peers = [{
-        "public_key": server_public_key,
-        "endpoint": server_endpoint,
+        "public_key": server["public_key"],
+        "endpoint": server["endpoint"],
     }]
 
     wireguard_config = generate_wireguard_config(interface=interface, peers=peers)

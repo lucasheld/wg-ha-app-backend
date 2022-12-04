@@ -1,3 +1,3 @@
-from .app import app, celery
+from .app import app, celery, db
 from . import routes
 from . import tasks

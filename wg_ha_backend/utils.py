@@ -7,8 +7,8 @@ import subprocess
 import jinja2
 
 from config import ANSIBLE_PROJECT_PATH
-from wg_ha_backend.database import clients, server_interface_ips
 from wg_ha_backend.tasks import run_playbook
+from wg_ha_backend import db
 
 
 def get_ip_version(ip_address):
@@ -43,7 +43,10 @@ def next_num(nums, start=1):
 def generate_next_virtual_client_ips():
     ips = []
 
-    for cidr in server_interface_ips:
+    server = dump(db.server.find_one({}))
+    clients = dump(db.clients.find())
+
+    for cidr in server["interface_ips"]:
         ip = cidr.split("/")[0]
         ips.append(ip)
 
@@ -92,24 +95,12 @@ def generate_allowed_ips(virtual_client_ips):
 
 
 def render_ansible_config_template():
+    clients = dump(db.clients.find())
+
     env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
     template = env.get_template("wireguard_peers.j2")
     rendered = template.render(clients=clients)
     return rendered
-
-
-# def check_public_key_exists(public_key):
-#     for client in clients:
-#         if client["public_key"] == public_key:
-#             return True
-#     return False
-
-
-def check_private_key_exists(private_key):
-    for client in clients:
-        if client["private_key"] == private_key:
-            return True
-    return False
 
 
 def generate_wireguard_config(interface, peers):
@@ -125,12 +116,6 @@ def generate_wireguard_config(interface, peers):
 def allowed_ips_to_interface_address(allowed_ips):
     addresses = [i.replace("/32", "/24").replace("/128", "/112") for i in allowed_ips]
     return ", ".join(addresses)
-
-
-def get_client(public_key):
-    for client in clients:
-        if client["public_key"] == public_key:
-            return client
 
 
 def render_and_run_ansible():
@@ -149,3 +134,26 @@ def get_changed_client_keys(client_old, client_new):
         if client_new[i] != client_old.get(i):
             changed.append(i)
     return changed
+
+
+def dump(r):
+    if type(r) == dict:
+        data = r
+    else:
+        data = list(r)
+    # dump mongo response as string
+    string = json.dumps(data, default=lambda o: str(o))
+    # load json from string
+    data = json.loads(string)
+    # replace key "_id" with "id"
+    if type(r) == dict:
+        data = {"id" if k == "_id" else k: v for k, v in data.items()}
+    else:
+        data = [{"id" if k == "_id" else k: v for k, v in i.items()} for i in data]
+    return data
+
+
+def dumps(r):
+    data = dump(r)
+    # dump new data as string
+    return json.dumps(data)

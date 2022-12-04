@@ -73,5 +73,17 @@ services:
       - celery
     command: gunicorn --bind 0.0.0.0:5000 wg_ha_backend:app
 
+  mongo:
+    image: mongo
+
+  mongo-express:
+    image: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+    ports:
+      - "8081:8081"
+    depends_on:
+      - mongo
+
 volumes:
   redis:
