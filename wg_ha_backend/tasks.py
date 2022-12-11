@@ -1,9 +1,10 @@
 import os
 import subprocess
+from threading import Thread
 
-from wg_ha_backend import celery
-from wg_ha_backend.exceptions import PlaybookException
 from config import ANSIBLE_PROJECT_PATH
+from wg_ha_backend import celery, socketio
+from wg_ha_backend.exceptions import PlaybookException
 
 
 @celery.task(bind=True)
@@ -49,3 +50,28 @@ def run_playbook(self, playbook, extra_vars=None):
     return {
         'output': output.strip()
     }
+
+
+def celery_monitor():
+    state = celery.events.State()
+
+    def announce_tasks(event):
+        state.event(event)
+
+        if 'uuid' in event:
+            task = state.tasks.get(event['uuid'])
+            socketio.emit(event['type'], {
+                "uuid": task.uuid,
+                "name": task.name,
+                **task.info()
+            })
+
+    with celery.connection() as connection:
+        recv = celery.events.Receiver(connection, handlers={
+            '*': announce_tasks,
+        })
+        recv.capture(limit=None, timeout=None, wakeup=True)
+
+
+celery_thread = Thread(target=celery_monitor, daemon=True)
+celery_thread.start()

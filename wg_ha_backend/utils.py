@@ -7,8 +7,8 @@ import subprocess
 import jinja2
 
 from config import ANSIBLE_PROJECT_PATH
-from wg_ha_backend.tasks import run_playbook
 from wg_ha_backend import db
+from wg_ha_backend.tasks import run_playbook
 
 
 def get_ip_version(ip_address):
