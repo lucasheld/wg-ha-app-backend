@@ -5,7 +5,7 @@ from bson import ObjectId
 from flask import jsonify, request, url_for, Response
 
 from config import ANSIBLE_PROJECT_PATH
-from wg_ha_backend import app, db
+from wg_ha_backend import app, db, socketio
 from wg_ha_backend.tasks import run_playbook
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, render_and_run_ansible, \
@@ -87,6 +87,8 @@ def route_client_post():
     })
     db.clients.insert_one(client)
 
+    socketio.emit("addClient", dump(client))
+
     render_and_run_ansible()
     return {}
 
@@ -97,12 +99,14 @@ def route_client_patch(id):
     if not client:
         return Response({}, status=404, mimetype='application/json')
 
-    data = request.json
-    data.pop("id")
+    new_client = request.json
+    new_client_without_id = {k: v for k, v in new_client.items() if k != "id"}
 
-    changed_keys = get_changed_client_keys(client, data)
+    changed_keys = get_changed_client_keys(client, new_client_without_id)
     if changed_keys:
-        db.clients.update_one({"_id": ObjectId(id)}, {'$set': data})
+        db.clients.update_one({"_id": ObjectId(id)}, {'$set': new_client_without_id})
+
+        socketio.emit("editClient", new_client)
 
         # do not run the ansible playbook if only the title has changed
         if changed_keys != ["title"]:
@@ -113,6 +117,9 @@ def route_client_patch(id):
 @app.route("/api/client/<id>", methods=["DELETE"])
 def route_client_delete(id):
     r = db.clients.delete_one({"_id": ObjectId(id)})
+
+    socketio.emit("deleteClient", id)
+
     if r.deleted_count:
         render_and_run_ansible()
         return Response({}, status=200, mimetype='application/json')
@@ -140,3 +147,8 @@ def route_config_get(id):
 
     wireguard_config = generate_wireguard_config(interface=interface, peers=peers)
     return wireguard_config
+
+
+@socketio.on("connect")
+def test_connect():
+    socketio.emit("setClients", dump(db.clients.find()))
