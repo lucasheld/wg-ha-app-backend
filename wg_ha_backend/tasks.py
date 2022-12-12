@@ -60,9 +60,21 @@ def celery_monitor():
 
         if 'uuid' in event:
             task = state.tasks.get(event['uuid'])
+            event_to_state = {
+                "task-sent": "PENDING",
+                "task-received": "PENDING",
+                "task-started": "STARTED",
+                "task-succeeded": "SUCCESS",
+                "task-failed": "FAILURE",
+                "task-rejected": "FAILURE",
+                "task-revoked": "REVOKED",
+                "task-retried": "RETRY",
+            }
             socketio.emit(event['type'], {
                 "uuid": task.uuid,
                 "name": task.name,
+                "received": task.received,
+                "state": event_to_state.get(event['type']),
                 **task.info()
             })
 

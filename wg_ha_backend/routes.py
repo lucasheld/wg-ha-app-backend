@@ -150,5 +150,5 @@ def route_config_get(id):
 
 
 @socketio.on("connect")
-def test_connect():
+def event_connect():
     socketio.emit("setClients", dump(db.clients.find()))
