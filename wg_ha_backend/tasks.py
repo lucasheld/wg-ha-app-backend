@@ -37,11 +37,16 @@ def run_playbook(self, playbook, extra_vars=None):
     )
 
     output = ""
+    last_output_stripped = ""
     # read new lines while process is running
     while process.poll() is None:
         line = process.stdout.readline().decode()
         output += line
-        self.update_state(state='PROGRESS', meta={'output': output.strip()})
+        output_stripped = output.strip()
+        if output_stripped and output_stripped != last_output_stripped:
+            last_output_stripped = output_stripped
+            self.update_state(state='PROGRESS', meta={'output': output_stripped})
+            self.send_event("task-progress", output=output_stripped)
     # read the rest after process has stopped
     line = process.stdout.read().decode()
     output += line
@@ -55,28 +60,38 @@ def run_playbook(self, playbook, extra_vars=None):
 def celery_monitor():
     state = celery.events.State()
 
+    celery_events_to_state = {
+        "task-sent": "PENDING",
+        "task-received": "PENDING",
+        "task-started": "STARTED",
+        "task-succeeded": "SUCCESS",
+        "task-failed": "FAILURE",
+        "task-rejected": "FAILURE",
+        "task-revoked": "REVOKED",
+        "task-retried": "RETRY",
+    }
+
     def announce_tasks(event):
         state.event(event)
 
         if 'uuid' in event:
+            event_type = event['type']
             task = state.tasks.get(event['uuid'])
-            event_to_state = {
-                "task-sent": "PENDING",
-                "task-received": "PENDING",
-                "task-started": "STARTED",
-                "task-succeeded": "SUCCESS",
-                "task-failed": "FAILURE",
-                "task-rejected": "FAILURE",
-                "task-revoked": "REVOKED",
-                "task-retried": "RETRY",
-            }
-            socketio.emit(event['type'], {
-                "uuid": task.uuid,
-                "name": task.name,
-                "received": task.received,
-                "state": event_to_state.get(event['type']),
-                **task.info()
-            })
+            if event_type in celery_events_to_state:
+                task_state = celery_events_to_state[event_type]
+
+                socketio.emit(event_type, {
+                    "uuid": task.uuid,
+                    "name": task.name,
+                    "received": task.received,
+                    "state": task_state,
+                    **task.info()
+                })
+            elif event_type == "task-progress":
+                socketio.emit(event_type, {
+                    "uuid": task.uuid,
+                    "output": event['output']
+                })
 
     with celery.connection() as connection:
         recv = celery.events.Receiver(connection, handlers={
