@@ -42,7 +42,8 @@ def celery_monitor():
             elif event_type == "clients-applied":
                 db.clients_applied.delete_many({})
                 data = [{k:v for k, v in client.items() if k != "id"} for client in event["clients"]]
-                db.clients_applied.insert_many(data)
+                if data:
+                    db.clients_applied.insert_many(data)
 
                 socketio.emit("setClientsApplied", dump(db.clients_applied.find()))
 
