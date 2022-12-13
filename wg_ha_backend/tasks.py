@@ -50,8 +50,11 @@ def run_playbook(self, playbook, extra_vars=None):
     # read the rest after process has stopped
     line = process.stdout.read().decode()
     output += line
+    output_stripped = output.strip()
     if process.returncode != 0:
-        raise PlaybookException(output.strip())
+        raise PlaybookException(output_stripped)
+    if output_stripped != last_output_stripped:
+        self.send_event("task-progress", output=output_stripped)
     return {
         'output': output.strip()
     }
