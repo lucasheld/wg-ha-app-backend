@@ -1,13 +1,10 @@
-import os
-
-import yaml
 from celery import Celery
 from flask import Flask
 from flask_cors import CORS
 from flask_socketio import SocketIO
 from pymongo import MongoClient
 
-from config import CELERY_BROKER_URL, CELERY_RESULT_BACKEND, ANSIBLE_PROJECT_PATH
+from config import CELERY_BROKER_URL, CELERY_RESULT_BACKEND
 
 app = Flask(__name__)
 
@@ -22,25 +19,3 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 client = MongoClient('mongo', 27017)
 db = client.flask_db
-
-# init collection server
-if not db.server.find_one({}):
-    db.server.insert_one({
-        "interface_ips": [
-            "10.0.0.1/24",
-            "fdc9:281f:04d7:9ee9::1/112"
-        ],
-        "private_key": "gG38NoQ9UEYzu5LAHzT3n9Kfk6VJz7iDcHEEuNovIHE=",
-        "public_key": "SPlAIzq4bkT3IxpFDnxfxACIaLoYMsv/WjxHTr6ZDR8=",
-        "endpoint": "116.202.189.178:51820"
-    })
-
-# init collection clients
-# if not db.clients.find_one({}):
-#     ansible_config_path = os.path.join(ANSIBLE_PROJECT_PATH, "group_vars", "all", "wireguard_peers")
-#     with open(ansible_config_path) as f:
-#         data = yaml.safe_load(f)
-#     peers = data.get("wireguard", {}).get("peers", [])
-#     for index, peer in enumerate(peers):
-#         # TODO: title and private_key missing
-#         db.clients.insert_one(peer)

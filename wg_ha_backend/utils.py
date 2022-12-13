@@ -94,15 +94,6 @@ def generate_allowed_ips(virtual_client_ips):
     return allowed_ips
 
 
-def render_ansible_config_template():
-    clients = dump(db.clients.find())
-
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
-    template = env.get_template("wireguard_peers.j2")
-    rendered = template.render(clients=clients)
-    return rendered
-
-
 def generate_wireguard_config(interface, peers):
     env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
     template = env.get_template("wireguard_config.j2")
@@ -119,13 +110,17 @@ def allowed_ips_to_interface_address(allowed_ips):
 
 
 def render_and_run_ansible():
-    ansible_config = render_ansible_config_template()
+    clients = dump(db.clients.find())
+
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
+    template = env.get_template("wireguard_peers.j2")
+    ansible_config = template.render(clients=clients)
 
     ansible_config_path = os.path.join(ANSIBLE_PROJECT_PATH, "group_vars", "all", "wireguard_peers")
     with open(ansible_config_path, "w") as f:
         f.write(ansible_config)
 
-    run_playbook.delay(playbook="apply-config.yml")
+    run_playbook.delay(playbook="apply-config.yml", clients=clients)
 
 
 def get_changed_client_keys(client_old, client_new):

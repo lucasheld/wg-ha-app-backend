@@ -71,7 +71,7 @@ services:
     depends_on:
       - build-app
       - celery
-    command: gunicorn --bind 0.0.0.0:5000 wg_ha_backend:app
+    command: gunicorn --bind 0.0.0.0:5000 'wg_ha_backend:create_app()'
 
   mongo:
     image: mongo

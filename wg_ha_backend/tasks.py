@@ -1,14 +1,13 @@
 import os
 import subprocess
-from threading import Thread
 
 from config import ANSIBLE_PROJECT_PATH
-from wg_ha_backend import celery, socketio
+from wg_ha_backend import celery
 from wg_ha_backend.exceptions import PlaybookException
 
 
 @celery.task(bind=True)
-def run_playbook(self, playbook, extra_vars=None):
+def run_playbook(self, playbook, clients, extra_vars=None):
     # check if playbook exists
     playbook_path = os.path.join(ANSIBLE_PROJECT_PATH, playbook)
     if not os.path.isfile(playbook_path):
@@ -51,57 +50,14 @@ def run_playbook(self, playbook, extra_vars=None):
     line = process.stdout.read().decode()
     output += line
     output_stripped = output.strip()
+
     if process.returncode != 0:
         raise PlaybookException(output_stripped)
+
+    self.send_event("clients-applied", clients=clients)
+
     if output_stripped != last_output_stripped:
         self.send_event("task-progress", output=output_stripped)
     return {
         'output': output.strip()
     }
-
-
-def celery_monitor():
-    state = celery.events.State()
-
-    celery_events_to_state = {
-        "task-sent": "PENDING",
-        "task-received": "PENDING",
-        "task-started": "STARTED",
-        "task-succeeded": "SUCCESS",
-        "task-failed": "FAILURE",
-        "task-rejected": "FAILURE",
-        "task-revoked": "REVOKED",
-        "task-retried": "RETRY",
-    }
-
-    def announce_tasks(event):
-        state.event(event)
-
-        if 'uuid' in event:
-            event_type = event['type']
-            task = state.tasks.get(event['uuid'])
-            if event_type in celery_events_to_state:
-                task_state = celery_events_to_state[event_type]
-
-                socketio.emit(event_type, {
-                    "uuid": task.uuid,
-                    "name": task.name,
-                    "received": task.received,
-                    "state": task_state,
-                    **task.info()
-                })
-            elif event_type == "task-progress":
-                socketio.emit(event_type, {
-                    "uuid": task.uuid,
-                    "output": event['output']
-                })
-
-    with celery.connection() as connection:
-        recv = celery.events.Receiver(connection, handlers={
-            '*': announce_tasks,
-        })
-        recv.capture(limit=None, timeout=None, wakeup=True)
-
-
-celery_thread = Thread(target=celery_monitor, daemon=True)
-celery_thread.start()

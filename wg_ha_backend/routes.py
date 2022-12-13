@@ -1,4 +1,5 @@
 import json
+import json
 import subprocess
 
 from bson import ObjectId
@@ -83,7 +84,7 @@ def route_client_post():
     client = data
     client.update({
         "public_key": public_key,
-        "allowed_ips": allowed_ips,
+        "allowed_ips": allowed_ips
     })
     db.clients.insert_one(client)
 
@@ -152,3 +153,4 @@ def route_config_get(id):
 @socketio.on("connect")
 def event_connect():
     socketio.emit("setClients", dump(db.clients.find()))
+    socketio.emit("setClientsApplied", dump(db.clients_applied.find()))
