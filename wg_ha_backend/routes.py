@@ -1,9 +1,11 @@
-import json
+import datetime
 import json
 import subprocess
 
 from bson import ObjectId
 from flask import jsonify, request, url_for, Response
+from flask_bcrypt import generate_password_hash, check_password_hash
+from flask_jwt_extended import create_access_token
 
 from config import ANSIBLE_PROJECT_PATH
 from wg_ha_backend import app, db, socketio
@@ -154,3 +156,36 @@ def route_config_get(id):
 def event_connect():
     socketio.emit("setClients", dump(db.clients.find()))
     socketio.emit("setClientsApplied", dump(db.clients_applied.find()))
+
+
+@app.route("/api/register", methods=["POST"])
+def route_register_post():
+    username = request.json.get("username")
+    password = request.json.get("password")
+
+    pw_hash = generate_password_hash(password).decode('utf8')
+
+    db.users.insert_one({
+        "username": username,
+        "password": pw_hash
+    })
+    return {}
+
+
+@app.route("/api/login", methods=["POST"])
+def route_login_post():
+    username = request.json.get("username")
+    password = request.json.get("password")
+
+    user = dump(db.users.find_one({"username": username}))
+    authorized = False
+    if user:
+        pw_hash = user["password"]
+        authorized = check_password_hash(pw_hash, password)
+    if not authorized:
+        return {'error': 'Username or password invalid'}, 401
+
+    user_id = str(user["id"])
+    expires = datetime.timedelta(days=7)
+    access_token = create_access_token(identity=user_id, expires_delta=expires)
+    return {'token': access_token}, 200

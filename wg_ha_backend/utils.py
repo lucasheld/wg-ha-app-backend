@@ -132,6 +132,8 @@ def get_changed_client_keys(client_old, client_new):
 
 
 def dump(r):
+    if r is None:
+        return
     if type(r) == dict:
         data = r
     else:

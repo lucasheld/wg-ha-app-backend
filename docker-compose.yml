@@ -30,10 +30,12 @@ services:
       CELERY_BROKER_URL: redis://redis
       CELERY_RESULT_BACKEND: redis://redis
       ANSIBLE_VAULT_PASSWORD_FILE: "/.vault_key"
+      ENV_FILE_LOCATION: "/.env"
     volumes:
       - /home/ansible/wg-ha-app/ansible:/ansible:ro
       - /home/ansible/.ssh:/home/abc/.ssh/:ro
       - /home/lucas/.vault_key:/.vault_key:ro
+      - ./.env:/.env:ro
     user: abc
     depends_on:
       - build-app
@@ -49,6 +51,9 @@ services:
     environment:
       CELERY_BROKER_URL: redis://redis
       CELERY_RESULT_BACKEND: redis://redis
+      ENV_FILE_LOCATION: "/.env"
+    volumes:
+      - ./.env:/.env:ro
     depends_on:
       - build-app
       - redis
@@ -65,9 +70,11 @@ services:
       CELERY_BROKER_URL: redis://redis
       CELERY_RESULT_BACKEND: redis://redis
       ANSIBLE_VAULT_PASSWORD_FILE: "/.vault_key"
+      ENV_FILE_LOCATION: "/.env"
     volumes:
       - /home/ansible/wg-ha-app/ansible:/ansible
       - /home/lucas/.vault_key:/.vault_key:ro
+      - ./.env:/.env:ro
     depends_on:
       - build-app
       - celery

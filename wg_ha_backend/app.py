@@ -1,12 +1,15 @@
 from celery import Celery
 from flask import Flask
+from flask_bcrypt import Bcrypt
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from flask_socketio import SocketIO
 from pymongo import MongoClient
 
 from config import CELERY_BROKER_URL, CELERY_RESULT_BACKEND
 
 app = Flask(__name__)
+app.config.from_envvar('ENV_FILE_LOCATION')
 
 CORS(app)
 
@@ -19,3 +22,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 client = MongoClient('mongo', 27017)
 db = client.flask_db
+
+bcrypt = Bcrypt(app)
+
+jwt = JWTManager(app)
