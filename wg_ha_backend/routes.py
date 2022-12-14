@@ -5,7 +5,9 @@ import subprocess
 from bson import ObjectId
 from flask import jsonify, request, url_for, Response
 from flask_bcrypt import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import create_access_token, jwt_required
+from flask_jwt_extended.exceptions import NoAuthorizationError
+from flask_socketio import ConnectionRefusedError
 
 from config import ANSIBLE_PROJECT_PATH
 from wg_ha_backend import app, db, socketio
@@ -16,6 +18,7 @@ from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allow
 
 
 @app.route("/api/playbook", methods=["POST"])
+@jwt_required()
 def route_playbook_post():
     data = request.json
     playbook = data.get("playbook")
@@ -25,6 +28,7 @@ def route_playbook_post():
 
 
 @app.route('/api/playbook/<task_id>')
+@jwt_required()
 def route_playbook_status_get(task_id):
     task = run_playbook.AsyncResult(task_id)
     if task.state == 'FAILURE':
@@ -44,6 +48,7 @@ def route_playbook_status_get(task_id):
 
 
 @app.route("/api/inventory")
+@jwt_required()
 def route_inventory_get():
     command = [
         "ansible-inventory",
@@ -68,12 +73,14 @@ def route_inventory_get():
 
 
 @app.route("/api/client")
+@jwt_required()
 def route_client_get():
     r = db.clients.find()
     return Response(dumps(r), status=200, mimetype='application/json')
 
 
 @app.route("/api/client", methods=["POST"])
+@jwt_required()
 def route_client_post():
     data = request.json
 
@@ -97,6 +104,7 @@ def route_client_post():
 
 
 @app.route("/api/client/<id>", methods=["PATCH"])
+@jwt_required()
 def route_client_patch(id):
     client = db.clients.find_one({"_id": ObjectId(id)})
     if not client:
@@ -118,6 +126,7 @@ def route_client_patch(id):
 
 
 @app.route("/api/client/<id>", methods=["DELETE"])
+@jwt_required()
 def route_client_delete(id):
     r = db.clients.delete_one({"_id": ObjectId(id)})
 
@@ -130,6 +139,7 @@ def route_client_delete(id):
 
 
 @app.route("/api/config/<id>")
+@jwt_required()
 def route_config_get(id):
     client = db.clients.find_one({"_id": ObjectId(id)})
     if not client:
@@ -153,21 +163,25 @@ def route_config_get(id):
 
 
 @socketio.on("connect")
+@jwt_required()
 def event_connect():
     socketio.emit("setClients", dump(db.clients.find()))
     socketio.emit("setClientsApplied", dump(db.clients_applied.find()))
 
 
 @app.route("/api/register", methods=["POST"])
+@jwt_required()
 def route_register_post():
     username = request.json.get("username")
     password = request.json.get("password")
+    roles = request.json.get("roles")
 
     pw_hash = generate_password_hash(password).decode('utf8')
 
     db.users.insert_one({
         "username": username,
-        "password": pw_hash
+        "password": pw_hash,
+        "roles": roles
     })
     return {}
 
@@ -188,4 +202,12 @@ def route_login_post():
     user_id = str(user["id"])
     expires = datetime.timedelta(days=7)
     access_token = create_access_token(identity=user_id, expires_delta=expires)
-    return {'token': access_token}, 200
+    return {
+        "token": access_token,
+        "roles": user["roles"]
+    }, 200
+
+
+@app.errorhandler(NoAuthorizationError)
+def internal_error(error):
+    raise ConnectionRefusedError('unauthorized!')
