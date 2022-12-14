@@ -123,7 +123,7 @@ def render_and_run_ansible():
     run_playbook.delay(playbook="apply-config.yml", clients=clients)
 
 
-def get_changed_client_keys(client_old, client_new):
+def get_changed_keys(client_old, client_new):
     changed = []
     for i in client_new:
         if client_new[i] != client_old.get(i):
@@ -154,3 +154,10 @@ def dumps(r):
     data = dump(r)
     # dump new data as string
     return json.dumps(data)
+
+
+def remove_keys(data, keys):
+    if type(data) == list:
+        return [{k: v for k, v in i.items() if k not in keys} for i in data]
+    else:
+        return {k: v for k, v in data.items() if k not in keys}

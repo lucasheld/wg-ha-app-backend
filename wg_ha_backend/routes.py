@@ -5,16 +5,17 @@ import subprocess
 from bson import ObjectId
 from flask import jsonify, request, url_for, Response
 from flask_bcrypt import generate_password_hash, check_password_hash
-from flask_jwt_extended import create_access_token, jwt_required
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from flask_socketio import ConnectionRefusedError
+from flask_socketio import join_room
 
 from config import ANSIBLE_PROJECT_PATH
 from wg_ha_backend import app, db, socketio
 from wg_ha_backend.tasks import run_playbook
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, render_and_run_ansible, \
-    get_changed_client_keys, dump, dumps
+    get_changed_keys, dump, dumps, remove_keys
 
 
 @app.route("/api/playbook", methods=["POST"])
@@ -111,9 +112,10 @@ def route_client_patch(id):
         return Response({}, status=404, mimetype='application/json')
 
     new_client = request.json
+    new_client = {k: v for k, v in new_client.items() if v is not None}
     new_client_without_id = {k: v for k, v in new_client.items() if k != "id"}
 
-    changed_keys = get_changed_client_keys(client, new_client_without_id)
+    changed_keys = get_changed_keys(client, new_client_without_id)
     if changed_keys:
         db.clients.update_one({"_id": ObjectId(id)}, {'$set': new_client_without_id})
 
@@ -165,28 +167,23 @@ def route_config_get(id):
 @socketio.on("connect")
 @jwt_required()
 def event_connect():
+    # add user to role room
+    user_id = get_jwt_identity()
+    user = db.users.find_one({"_id": ObjectId(user_id)})
+    user_role = user["roles"][0]
+    join_room(user_role)
+
+    # messages to all
     socketio.emit("setClients", dump(db.clients.find()))
     socketio.emit("setClientsApplied", dump(db.clients_applied.find()))
 
-
-@app.route("/api/register", methods=["POST"])
-@jwt_required()
-def route_register_post():
-    username = request.json.get("username")
-    password = request.json.get("password")
-    roles = request.json.get("roles")
-
-    pw_hash = generate_password_hash(password).decode('utf8')
-
-    db.users.insert_one({
-        "username": username,
-        "password": pw_hash,
-        "roles": roles
-    })
-    return {}
+    # messages to admins
+    users = dump(db.users.find())
+    users_without_password = [{k: v for k, v in user.items() if k != "password"} for user in users]
+    socketio.emit("setUsers", users_without_password, to="admin")
 
 
-@app.route("/api/login", methods=["POST"])
+@app.route("/api/session", methods=["POST"])
 def route_login_post():
     username = request.json.get("username")
     password = request.json.get("password")
@@ -204,10 +201,76 @@ def route_login_post():
     access_token = create_access_token(identity=user_id, expires_delta=expires)
     return {
         "token": access_token,
-        "roles": user["roles"]
+        "roles": user["roles"],
+        "user_id": user_id
     }, 200
 
 
 @app.errorhandler(NoAuthorizationError)
 def internal_error(error):
-    raise ConnectionRefusedError('unauthorized!')
+    raise ConnectionRefusedError('unauthorized')
+
+
+@app.route("/api/user")
+@jwt_required()
+def route_user_get():
+    users = dumps(db.users.find())
+    return Response(remove_keys(users, ["password"]), status=200, mimetype='application/json')
+
+
+@app.route("/api/user", methods=["POST"])
+@jwt_required()
+def route_user_post():
+    username = request.json.get("username")
+    password = request.json.get("password")
+    roles = request.json.get("roles")
+
+    pw_hash = generate_password_hash(password).decode('utf8')
+    r = db.users.insert_one({
+        "username": username,
+        "password": pw_hash,
+        "roles": roles
+    })
+    user_id = r.inserted_id
+
+    user = dump(db.users.find_one({"_id": ObjectId(user_id)}))
+    socketio.emit("addUser", remove_keys(user, ["password"]))
+    return {}
+
+
+@app.route("/api/user/<id>", methods=["PATCH"])
+@jwt_required()
+def route_user_patch(id):
+    user = db.users.find_one({"_id": ObjectId(id)})
+    if not user:
+        return Response({}, status=404, mimetype='application/json')
+
+    username = request.json.get("username")
+    password = request.json.get("password")
+    roles = request.json.get("roles")
+
+    pw_hash = generate_password_hash(password).decode('utf8')
+    new_user = {
+        "username": username,
+        "password": pw_hash,
+        "roles": roles
+    }
+    new_user = {k: v for k, v in new_user.items() if v is not None}
+
+    new_user_without_id = remove_keys(new_user, ["id"])
+    changed_keys = get_changed_keys(user, new_user_without_id)
+    if changed_keys:
+        db.users.update_one({"_id": ObjectId(id)}, {'$set': new_user_without_id})
+        socketio.emit("editUser", remove_keys(new_user, ["password"]))
+    return {}
+
+
+@app.route("/api/user/<id>", methods=["DELETE"])
+@jwt_required()
+def route_user_delete(id):
+    r = db.users.delete_one({"_id": ObjectId(id)})
+    socketio.emit("deleteUser", id)
+
+    if r.deleted_count:
+        return Response({}, status=200, mimetype='application/json')
+    return Response({}, status=404, mimetype='application/json')
