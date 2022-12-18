@@ -33,7 +33,6 @@ def admin_required():
     return wrapper
 
 
-
 @app.route("/api/playbook", methods=["POST"])
 @admin_required()
 def route_playbook_post():
@@ -265,14 +264,16 @@ def route_user_patch(id):
     if not user:
         return Response({}, status=404, mimetype='application/json')
 
-    new_user = {}
+    new_user = {
+        "id": id
+    }
     if get_jwt().get("is_administrator", False):
         username = request.json.get("username")
         roles = request.json.get("roles")
-        new_user = {
+        new_user.update({
             "username": username,
             "roles": roles
-        }
+        })
 
     password = request.json.get("password")
     pw_hash = generate_password_hash(password).decode('utf8')
