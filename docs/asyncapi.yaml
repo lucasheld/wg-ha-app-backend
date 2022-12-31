@@ -7,7 +7,7 @@ info:
 
 channels:
   /:
-    subscribe:
+    publish:
       message:
         oneOf:
           - $ref: "#/components/messages/task-sent"
@@ -19,7 +19,7 @@ channels:
           - $ref: "#/components/messages/task-revoked"
           - $ref: "#/components/messages/task-retried"
           - $ref: "#/components/messages/task-progress"
-    publish:
+    subscribe:
       message:
         oneOf:
           - $ref: "#/components/messages/setClientsApplied"

@@ -150,12 +150,6 @@ def dump(r):
     return data
 
 
-def dumps(r):
-    data = dump(r)
-    # dump new data as string
-    return json.dumps(data)
-
-
 def remove_keys(data, keys):
     if type(data) == list:
         return [{k: v for k, v in i.items() if k not in keys} for i in data]
