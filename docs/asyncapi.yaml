@@ -1,0 +1,286 @@
+asyncapi: 2.0.0
+
+info:
+  title: Wireguard HA App Backend
+  version: '1.0.0'
+  description: TODO
+
+channels:
+  /:
+    subscribe:
+      message:
+        oneOf:
+          - $ref: "#/components/messages/task-sent"
+          - $ref: "#/components/messages/task-received"
+          - $ref: "#/components/messages/task-started"
+          - $ref: "#/components/messages/task-succeeded"
+          - $ref: "#/components/messages/task-failed"
+          - $ref: "#/components/messages/task-rejected"
+          - $ref: "#/components/messages/task-revoked"
+          - $ref: "#/components/messages/task-retried"
+          - $ref: "#/components/messages/task-progress"
+    publish:
+      message:
+        oneOf:
+          - $ref: "#/components/messages/setClientsApplied"
+          - $ref: "#/components/messages/addClient"
+          - $ref: "#/components/messages/editClient"
+          - $ref: "#/components/messages/deleteClient"
+          - $ref: "#/components/messages/setClients"
+          - $ref: "#/components/messages/setClientsApplied"
+          - $ref: "#/components/messages/setUsers"
+          - $ref: "#/components/messages/addUser"
+          - $ref: "#/components/messages/editUser"
+          - $ref: "#/components/messages/deleteUser"
+
+    bindings:
+      $ref: "#/components/channelBindings/AuthenticatedWsBindings"
+
+components:
+  schemas:
+    user:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Id of the user.
+          example: 63b01673ccd05b466f1f545b
+        username:
+          type: string
+          description: Username of the user.
+          example: admin
+        roles:
+          type: array
+          description: Roles of the user.
+          example:
+            - admin
+    client:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Id of the client.
+          example: 63a01c196a7c77ea53a24a0a
+        title:
+          type: string
+          description: Title of the client.
+          example: test
+        private_key:
+          type: string
+          description: Private key of the client.
+          example: QNJVM4moPra71e/b7YDKV/8u82IpJIgWoZSkGw8dGW8=
+        tags:
+          type: array
+          description: Tags of the client.
+          example:
+            - admin
+        services:
+          type: array
+          description: Services of the client.
+          example:
+            - rules:
+                - protocol: tcp
+                  ports:
+                    - 80
+                    - 443
+              allowed_tags:
+                - http
+        public_key:
+          type: string
+          description: Public key of the client.
+          example: J7rzRlqWCyALgfa/WBKKR8grbdWW+I3SYNMmDyTjTng=
+        allowed_ips:
+          type: array
+          description: Allowed ips of the client.
+          example:
+            - 10.0.0.2/32
+            - fdc9:281f:4d7:9ee9::2/128
+    task:
+      type: object
+      properties:
+        uuid:
+          type: string
+          description: UUID of the task.
+          example: 3f0b1caf-2264-4c06-a2f2-2e4d10ffcd55
+        name:
+          type: string
+          description: Name of the task.
+          example: wg_ha_backend.tasks.run_playbook
+        received:
+          type: number
+          description: Received unix time of the task.
+          example: 1672484185.5608413
+        args:
+          type: string
+          description: Arguments of the task.
+          example: "()"
+        kwargs:
+          type: string
+          description: Keyword arguments of the task.
+          example: "{'playbook': 'apply-config.yml', 'clients': [{'id': '63a01c156a7c77ea53a24a09','title': 'test2', 'private_key': 'GKw6cELcTE4gz/YFco+g+99nFP8guI4DiWHNKRPukk4=','tags': [...], 'services': [...], 'public_key': 'WigXib06M2zvU1c6PtrWiIxHflIFy3bSkKdj/TDS6Gs=','allowed_ips': [...]}]}"
+        retries:
+          type: integer
+          description: Retries of the task.
+          example: 0
+        root_id:
+          type: string
+          description: Root id of the task.
+          example: 3f0b1caf-2264-4c06-a2f2-2e4d10ffcd55
+        state:
+          type: string
+          description: State of the task.
+  messages:
+    task-sent:
+      name: task-sent
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: PENDING
+    task-received:
+      name: task-received
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: PENDING
+    task-started:
+      name: task-started
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: STARTED
+    task-succeeded:
+      name: task-succeeded
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: SUCCESS
+    task-failed:
+      name: task-failed
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: FAILURE
+    task-rejected:
+      name: task-rejected
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: FAILURE
+    task-revoked:
+      name: task-revoked
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: REVOKED
+    task-retried:
+      name: task-retried
+      payload:
+        allOf:
+          - $ref: "#/components/schemas/task"
+          - type: object
+            properties:
+              state:
+                type: string
+                description: State of the task.
+                example: RETRY
+    task-progress:
+      name: task-progress
+      payload:
+        type: object
+        properties:
+          output:
+            type: string
+            description: Output of the task.
+            example: "PLAY [localhost] ***************************************************************\n\nTASK [Gathering Facts] *********************************************************\n"
+    addClient:
+      name: addClient
+      payload:
+        $ref: "#/components/schemas/client"
+    editClient:
+      name: editClient
+      payload:
+        $ref: "#/components/schemas/client"
+    deleteClient:
+      name: deleteClient
+      payload:
+        type: string
+        description: Id of the client.
+        example: 639f874561de3f1ba208e694
+    setClients:
+      name: setClients
+      payload:
+        type: array
+        items:
+          $ref: "#/components/schemas/client"
+    setClientsApplied:
+      name: setClientsApplied
+      payload:
+        type: array
+        items:
+          $ref: "#/components/schemas/client"
+    setUsers:
+      name: setUsers
+      payload:
+        type: array
+        items:
+          $ref: "#/components/schemas/user"
+    addUser:
+      name: addUser
+      payload:
+        $ref: "#/components/schemas/user"
+    editUser:
+      name: editUser
+      payload:
+        $ref: "#/components/schemas/user"
+    deleteUser:
+      name: deleteUser
+      payload:
+        type: string
+        description: Id of the user.
+        example: 63b01673ccd05b466f1f545b
+  channelBindings:
+    AuthenticatedWsBindings:
+      ws:
+        headers:
+          type: object
+          properties:
+            Authorization:
+              type: string
+              description: The JWT using the Bearer schema.
+          required:
+            - Authorization
