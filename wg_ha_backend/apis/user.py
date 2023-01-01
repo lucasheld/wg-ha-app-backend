@@ -9,9 +9,9 @@ from wg_ha_backend.utils import get_changed_keys, dump, remove_keys
 api = Namespace('user', description='Endpoints to manage users')
 
 user_parser = reqparse.RequestParser()
-user_parser.add_argument('username', type=str, help='Username of the user')
-user_parser.add_argument('password', type=str, help='Password of the user')
-user_parser.add_argument('roles', type=str, help='Roles of the user')
+user_parser.add_argument('username', type=str, help='Username of the user', location='json')
+user_parser.add_argument('password', type=str, help='Password of the user', location='json')
+user_parser.add_argument('roles', type=str, help='Roles of the user', location='json')
 
 
 @api.route("")

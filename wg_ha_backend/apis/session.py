@@ -10,8 +10,8 @@ from wg_ha_backend.utils import dump
 api = Namespace('session', description='Endpoint to login and receive a new JWT')
 
 session_parser = reqparse.RequestParser()
-session_parser.add_argument('username', type=str, help='Username of the user')
-session_parser.add_argument('password', type=str, help='Password of the user')
+session_parser.add_argument('username', type=str, help='Username of the user', location='json')
+session_parser.add_argument('password', type=str, help='Password of the user', location='json')
 
 
 @api.route("")

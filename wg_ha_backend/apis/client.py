@@ -10,10 +10,10 @@ from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allow
 api = Namespace('client', description='Endpoints to manage WireGuard clients')
 
 client_parser = reqparse.RequestParser()
-client_parser.add_argument('title', type=str, help='Title of the client')
-client_parser.add_argument('private_key', type=str, help='Private key of the client')
-client_parser.add_argument('tags', type=list, help='Tags of the client')
-client_parser.add_argument('services', type=list, help='Services of the client')
+client_parser.add_argument('title', type=str, help='Title of the client', location='json')
+client_parser.add_argument('private_key', type=str, help='Private key of the client', location='json')
+client_parser.add_argument('tags', type=list, help='Tags of the client', location='json')
+client_parser.add_argument('services', type=list, help='Services of the client', location='json')
 
 
 @api.route("")
@@ -35,11 +35,14 @@ class ClientList(Resource):
         private_key = args["private_key"]
         public_key = Wireguard.gen_public_key(private_key)
 
-        client = args
-        client.update({
+        client = {
+            "title": args["title"],
+            "private_key": args["private_key"],
+            "tags": args["tags"],
+            "services": args["services"],
             "public_key": public_key,
             "allowed_ips": allowed_ips
-        })
+        }
         db.clients.insert_one(client)
 
         socketio.emit("addClient", dump(client))
@@ -61,7 +64,16 @@ class Client(Resource):
         if not client:
             api.abort(404)
 
-        new_client = client_parser.parse_args()
+        args = client_parser.parse_args()
+
+        new_client = {
+            "title": args.get("title"),
+            "private_key": args.get("private_key"),
+            "tags": args.get("tags"),
+            "services": args.get("services"),
+            "public_key": args.get("public_key"),
+            "allowed_ips": args.get("allowed_ips")
+        }
         new_client = {k: v for k, v in new_client.items() if v is not None}
         new_client_without_id = {k: v for k, v in new_client.items() if k != "id"}
 
