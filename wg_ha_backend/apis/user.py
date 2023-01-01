@@ -6,7 +6,7 @@ from flask_restx import Resource, reqparse, Namespace
 from wg_ha_backend import admin_required, db, socketio
 from wg_ha_backend.utils import get_changed_keys, dump, remove_keys
 
-api = Namespace('user', description='TODO operations')
+api = Namespace('user', description='Endpoints to manage users')
 
 user_parser = reqparse.RequestParser()
 user_parser.add_argument('username', type=str, help='Username of the user')

@@ -4,7 +4,7 @@ from flask_restx import Resource, reqparse, Namespace
 from wg_ha_backend import admin_required
 from wg_ha_backend.tasks import run_playbook
 
-api = Namespace('playbook', description='TODO operations')
+api = Namespace('playbook', description='Endpoints to execute an Ansible Playbook and receive the output')
 
 playbook_parser = reqparse.RequestParser()
 playbook_parser.add_argument('playbook', type=str, help='Filename of the playbook')

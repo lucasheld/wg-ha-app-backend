@@ -1,9 +1,9 @@
 asyncapi: 2.0.0
 
 info:
-  title: Wireguard HA App Backend
+  title: Backend Socket.IO API
   version: '1.0.0'
-  description: TODO
+  description: Socket.IO API of the Backend
 
 channels:
   /:

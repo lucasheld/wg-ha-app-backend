@@ -7,9 +7,9 @@ from .session import api as session_namespace
 from .user import api as user_namespace
 
 api = Api(
-    title="todo",
+    title="Backend REST API",
     version="1.0",
-    description="A description",
+    description="REST API of the Backend",
     authorizations={
         'token': {
             'type': 'apiKey',

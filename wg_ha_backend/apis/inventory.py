@@ -7,7 +7,7 @@ from flask_restx import Resource, Namespace
 from config import ANSIBLE_PROJECT_PATH
 from wg_ha_backend import admin_required
 
-api = Namespace('inventory', description='TODO operations')
+api = Namespace('inventory', description='Endpoint to get the Ansible Inventory')
 
 
 @api.route("")

@@ -7,7 +7,7 @@ from flask_restx import Resource, reqparse, Namespace
 from wg_ha_backend import db
 from wg_ha_backend.utils import dump
 
-api = Namespace('session', description='TODO operations')
+api = Namespace('session', description='Endpoint to login and receive a new JWT')
 
 session_parser = reqparse.RequestParser()
 session_parser.add_argument('username', type=str, help='Username of the user')

@@ -7,7 +7,7 @@ from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allow
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, render_and_run_ansible, \
     get_changed_keys, dump
 
-api = Namespace('client', description='TODO operations')
+api = Namespace('client', description='Endpoints to manage WireGuard clients')
 
 client_parser = reqparse.RequestParser()
 client_parser.add_argument('title', type=str, help='Title of the client')
