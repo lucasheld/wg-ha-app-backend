@@ -28,32 +28,12 @@ channels:
           - $ref: "#/components/messages/deleteClient"
           - $ref: "#/components/messages/setClients"
           - $ref: "#/components/messages/setClientsApplied"
-          - $ref: "#/components/messages/setUsers"
-          - $ref: "#/components/messages/addUser"
-          - $ref: "#/components/messages/editUser"
-          - $ref: "#/components/messages/deleteUser"
 
     bindings:
       $ref: "#/components/channelBindings/AuthenticatedWsBindings"
 
 components:
   schemas:
-    user:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Id of the user.
-          example: 63b01673ccd05b466f1f545b
-        username:
-          type: string
-          description: Username of the user.
-          example: admin
-        roles:
-          type: array
-          description: Roles of the user.
-          example:
-            - admin
     client:
       type: object
       properties:
@@ -253,26 +233,6 @@ components:
         type: array
         items:
           $ref: "#/components/schemas/client"
-    setUsers:
-      name: setUsers
-      payload:
-        type: array
-        items:
-          $ref: "#/components/schemas/user"
-    addUser:
-      name: addUser
-      payload:
-        $ref: "#/components/schemas/user"
-    editUser:
-      name: editUser
-      payload:
-        $ref: "#/components/schemas/user"
-    deleteUser:
-      name: deleteUser
-      payload:
-        type: string
-        description: Id of the user.
-        example: 63b01673ccd05b466f1f545b
   channelBindings:
     AuthenticatedWsBindings:
       ws:
@@ -281,6 +241,6 @@ components:
           properties:
             Authorization:
               type: string
-              description: The JWT using the Bearer schema.
+              description: The Keycloak JWT using the Bearer schema.
           required:
             - Authorization

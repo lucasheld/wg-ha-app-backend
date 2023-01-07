@@ -71,6 +71,10 @@ services:
       CELERY_RESULT_BACKEND: redis://redis
       ANSIBLE_VAULT_PASSWORD_FILE: "/.vault_key"
       ENV_FILE_LOCATION: "/.env"
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_CLIENT_ID: backend
+      KEYCLOAK_SECRET_KEY: 7da8LMJB07UqTcmD6HYFEvsH309PgrA9
+      KEYCLOAK_REALM_NAME: test
     volumes:
       - /home/ansible/wg-ha-app/ansible:/ansible
       - /home/lucas/.vault_key:/.vault_key:ro
@@ -92,5 +96,33 @@ services:
     depends_on:
       - mongo
 
+  postgres:
+    image: postgres
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: password
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:20.0.2
+    restart: unless-stopped
+    environment:
+      DB_VENDOR: POSTGRES
+      DB_ADDR: postgres
+      DB_SCHEMA: public
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    command: start-dev
+
 volumes:
   redis:
+  postgres:

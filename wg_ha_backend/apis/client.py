@@ -1,8 +1,9 @@
 from bson import ObjectId
-from flask_jwt_extended import jwt_required
+from flask import Response
 from flask_restx import Resource, reqparse, Namespace
 
 from wg_ha_backend import db, socketio
+from wg_ha_backend.keycloak import user_required
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, render_and_run_ansible, \
     get_changed_keys, dump
@@ -19,13 +20,13 @@ client_parser.add_argument('services', type=list, help='Services of the client',
 @api.route("")
 class ClientList(Resource):
     @api.doc(security='token')
-    @jwt_required()
+    @user_required()
     def get(self):
         r = db.clients.find()
         return dump(r)
 
     @api.doc(security='token', parser=client_parser)
-    @jwt_required()
+    @user_required()
     def post(self):
         args = client_parser.parse_args()
 
@@ -58,7 +59,7 @@ class ClientList(Resource):
 class Client(Resource):
     @api.response(404, 'Not found')
     @api.doc(security='token', parser=client_parser)
-    @jwt_required()
+    @user_required()
     def patch(self, id):
         client = db.clients.find_one({"_id": ObjectId(id)})
         if not client:
@@ -90,7 +91,7 @@ class Client(Resource):
 
     @api.response(404, 'Not found')
     @api.doc(security='token')
-    @jwt_required()
+    @user_required()
     def delete(self, id):
         r = db.clients.delete_one({"_id": ObjectId(id)})
 
@@ -109,7 +110,7 @@ class Client(Resource):
 class Config(Resource):
     @api.response(404, 'Not found')
     @api.doc(security='token')
-    @jwt_required()
+    @user_required()
     def get(self, id):
         client = db.clients.find_one({"_id": ObjectId(id)})
         if not client:
@@ -129,4 +130,4 @@ class Config(Resource):
         }]
 
         wireguard_config = generate_wireguard_config(interface=interface, peers=peers)
-        return wireguard_config
+        return Response(wireguard_config)

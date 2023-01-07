@@ -1,7 +1,5 @@
 from threading import Thread
 
-from flask_bcrypt import generate_password_hash
-
 from wg_ha_backend import app, celery, db, socketio
 from wg_ha_backend.utils import dump
 
@@ -78,18 +76,6 @@ def create_app():
     #     for index, peer in enumerate(peers):
     #         # TODO: title and private_key missing
     #         db.clients.insert_one(peer)
-
-    if not db.users.find_one({}):
-        username = "admin"
-        password = "123456"
-        roles = [
-            "admin"
-        ]
-        db.users.insert_one({
-            "username": username,
-            "password": generate_password_hash(password).decode('utf8'),
-            "roles": roles
-        })
 
     celery_thread = Thread(target=celery_monitor, daemon=True)
     celery_thread.start()

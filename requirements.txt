@@ -4,13 +4,12 @@ flask-cors==3.0.10
 Celery==5.2.7
 redis==4.4.0
 ansible==7.1.0
-watchdog==2.2.0
+watchdog==2.2.1
 argh==0.26.2
 flower==1.2.0
 jinja2==3.1.2
 pymongo==4.3.3
 PyYAML==6.0
 flask-socketio==5.3.2
-flask-bcrypt==1.0.1
-flask-jwt-extended==4.4.4
 flask-restx==1.0.3
+python-keycloak==2.8.0

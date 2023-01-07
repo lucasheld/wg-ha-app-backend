@@ -1,7 +1,7 @@
 from flask import jsonify, url_for
 from flask_restx import Resource, reqparse, Namespace
 
-from wg_ha_backend import admin_required
+from wg_ha_backend.keycloak import admin_required
 from wg_ha_backend.tasks import run_playbook
 
 api = Namespace('playbook', description='Endpoints to execute an Ansible Playbook and receive the output')
