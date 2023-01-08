@@ -67,13 +67,18 @@ class Client(Resource):
 
         args = client_parser.parse_args()
 
+        private_key = args.get("private_key")
+        public_key = client["public_key"]
+        if private_key:
+            public_key = Wireguard.gen_public_key(private_key)
         new_client = {
+            "id": id,
             "title": args.get("title"),
-            "private_key": args.get("private_key"),
+            "private_key": private_key,
             "tags": args.get("tags"),
             "services": args.get("services"),
-            "public_key": args.get("public_key"),
-            "allowed_ips": args.get("allowed_ips")
+            "public_key": public_key,
+            "allowed_ips": client["allowed_ips"]
         }
         new_client = {k: v for k, v in new_client.items() if v is not None}
         new_client_without_id = {k: v for k, v in new_client.items() if k != "id"}
