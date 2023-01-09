@@ -1,15 +1,14 @@
 import os
 from functools import wraps
 
-from flask import request
+from flask import request, g
 from keycloak.keycloak_openid import KeycloakOpenID
-
 
 KEYCLOAK_ROLE_USER = "app-user"
 KEYCLOAK_ROLE_ADMIN = "app-admin"
 
 
-def get_keycloak_roles():
+def decode_keycloak_token():
     authorization = request.headers.get("Authorization")
     token = ""
     if authorization:
@@ -32,18 +31,18 @@ def get_keycloak_roles():
             key=keycloak_public_key,
             options=options
         )
-        roles = r["realm_access"]["roles"]
+        return r
     except:
-        roles = []
-    return roles
+        return
 
 
 def user_required():
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
-            roles = get_keycloak_roles()
-            if KEYCLOAK_ROLE_USER in roles or KEYCLOAK_ROLE_ADMIN in roles:
+            decoded_token = decode_keycloak_token()
+            g._app_backend_keycloak = decoded_token
+            if decoded_token and (KEYCLOAK_ROLE_USER in decoded_token["realm_access"]["roles"] or KEYCLOAK_ROLE_ADMIN in decoded_token["realm_access"]["roles"]):
                 return fn(*args, **kwargs)
             else:
                 return "Unauthorized", 401
@@ -55,10 +54,18 @@ def admin_required():
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
-            roles = get_keycloak_roles()
-            if KEYCLOAK_ROLE_ADMIN in roles:
+            decoded_token = decode_keycloak_token()
+            g._app_backend_keycloak = decoded_token
+            if decoded_token and KEYCLOAK_ROLE_ADMIN in decoded_token["realm_access"]["roles"]:
                 return fn(*args, **kwargs)
             else:
                 return "Unauthorized", 401
         return decorator
     return wrapper
+
+
+def get_keycloak_user_id():
+    decoded_token = g.get("_app_backend_keycloak")
+    if decoded_token is None:
+        raise RuntimeError("You must call `@user_required()` or `@admin_required()` before using this method")
+    return decoded_token["sub"]

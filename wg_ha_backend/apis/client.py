@@ -3,7 +3,7 @@ from flask import Response
 from flask_restx import Resource, reqparse, Namespace
 
 from wg_ha_backend import db, socketio
-from wg_ha_backend.keycloak import user_required
+from wg_ha_backend.keycloak import user_required, get_keycloak_user_id
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, render_and_run_ansible, \
     get_changed_keys, dump
@@ -22,12 +22,16 @@ class ClientList(Resource):
     @api.doc(security='token')
     @user_required()
     def get(self):
-        r = db.clients.find()
+        user_id = get_keycloak_user_id()
+
+        r = db.clients.find({"user_id": user_id})
         return dump(r)
 
     @api.doc(security='token', parser=client_parser)
     @user_required()
     def post(self):
+        user_id = get_keycloak_user_id()
+
         args = client_parser.parse_args()
 
         interface_ips = generate_next_virtual_client_ips()
@@ -42,7 +46,8 @@ class ClientList(Resource):
             "tags": args["tags"],
             "services": args["services"],
             "public_key": public_key,
-            "allowed_ips": allowed_ips
+            "allowed_ips": allowed_ips,
+            "user_id": user_id
         }
         db.clients.insert_one(client)
 
@@ -61,9 +66,14 @@ class Client(Resource):
     @api.doc(security='token', parser=client_parser)
     @user_required()
     def patch(self, id):
+        user_id = get_keycloak_user_id()
+
         client = db.clients.find_one({"_id": ObjectId(id)})
         if not client:
             api.abort(404)
+
+        if client["user_id"] != user_id:
+            api.abort(401)
 
         args = client_parser.parse_args()
 
@@ -78,7 +88,8 @@ class Client(Resource):
             "tags": args.get("tags"),
             "services": args.get("services"),
             "public_key": public_key,
-            "allowed_ips": client["allowed_ips"]
+            "allowed_ips": client["allowed_ips"],
+            "user_id": client["user_id"]
         }
         new_client = {k: v for k, v in new_client.items() if v is not None}
         new_client_without_id = {k: v for k, v in new_client.items() if k != "id"}
@@ -98,6 +109,12 @@ class Client(Resource):
     @api.doc(security='token')
     @user_required()
     def delete(self, id):
+        user_id = get_keycloak_user_id()
+
+        client = db.clients.find_one({"_id": ObjectId(id)})
+        if client["user_id"] != user_id:
+            api.abort(401)
+
         r = db.clients.delete_one({"_id": ObjectId(id)})
 
         socketio.emit("deleteClient", id)
@@ -117,9 +134,14 @@ class Config(Resource):
     @api.doc(security='token')
     @user_required()
     def get(self, id):
+        user_id = get_keycloak_user_id()
+
         client = db.clients.find_one({"_id": ObjectId(id)})
         if not client:
             api.abort(404)
+
+        if client["user_id"] != user_id:
+            api.abort(401)
 
         server = db.server.find_one({})
         server = dump(server)

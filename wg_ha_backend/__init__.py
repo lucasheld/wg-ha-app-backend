@@ -7,15 +7,17 @@ from wg_ha_backend.utils import dump
 
 # uses celery
 from . import tasks
-from .keycloak import user_required
+from .keycloak import user_required, get_keycloak_user_id
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 @socketio.on("connect")
 @user_required()
 def event_connect():
-    socketio.emit("setClients", dump(db.clients.find()))
-    socketio.emit("setClientsApplied", dump(db.clients_applied.find()))
+    user_id = get_keycloak_user_id()
+
+    socketio.emit("setClients", dump(db.clients.find({"user_id": user_id})))
+    socketio.emit("setClientsApplied", dump(db.clients_applied.find({"user_id": user_id})))
 
 
 # namespaces are using socketio
