@@ -10,6 +10,11 @@ channels:
     publish:
       message:
         oneOf:
+          - $ref: "#/components/messages/setClients"
+          - $ref: "#/components/messages/addClient"
+          - $ref: "#/components/messages/editClient"
+          - $ref: "#/components/messages/deleteClient"
+          - $ref: "#/components/messages/setClientsApplied"
           - $ref: "#/components/messages/task-sent"
           - $ref: "#/components/messages/task-received"
           - $ref: "#/components/messages/task-started"
@@ -19,16 +24,6 @@ channels:
           - $ref: "#/components/messages/task-revoked"
           - $ref: "#/components/messages/task-retried"
           - $ref: "#/components/messages/task-progress"
-    subscribe:
-      message:
-        oneOf:
-          - $ref: "#/components/messages/setClientsApplied"
-          - $ref: "#/components/messages/addClient"
-          - $ref: "#/components/messages/editClient"
-          - $ref: "#/components/messages/deleteClient"
-          - $ref: "#/components/messages/setClients"
-          - $ref: "#/components/messages/setClientsApplied"
-
     bindings:
       $ref: "#/components/channelBindings/AuthenticatedWsBindings"
 
@@ -75,6 +70,10 @@ components:
           example:
             - 10.0.0.2/32
             - fdc9:281f:4d7:9ee9::2/128
+        user_id:
+          type: string
+          description: Id of the user who created the client.
+          example: 09fc1cf1-71d7-49ca-b909-414381d8e249
     task:
       type: object
       properties:
