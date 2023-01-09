@@ -5,8 +5,7 @@ from flask_restx import Resource, reqparse, Namespace
 from wg_ha_backend import db, socketio
 from wg_ha_backend.keycloak import user_required, get_keycloak_user_id
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
-    generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, render_and_run_ansible, \
-    get_changed_keys, dump
+    generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_changed_keys, dump
 
 api = Namespace('client', description='Endpoints to manage WireGuard clients')
 
@@ -53,7 +52,6 @@ class ClientList(Resource):
 
         socketio.emit("addClient", dump(client))
 
-        render_and_run_ansible()
         return {}
 
 
@@ -99,10 +97,6 @@ class Client(Resource):
             db.clients.update_one({"_id": ObjectId(id)}, {'$set': new_client_without_id})
 
             socketio.emit("editClient", new_client)
-
-            # do not run the ansible playbook if only the title has changed
-            if changed_keys != ["title"]:
-                render_and_run_ansible()
         return {}
 
     @api.response(404, 'Not found')
@@ -120,7 +114,6 @@ class Client(Resource):
         socketio.emit("deleteClient", id)
 
         if r.deleted_count:
-            render_and_run_ansible()
             return {}
         api.abort(404)
 

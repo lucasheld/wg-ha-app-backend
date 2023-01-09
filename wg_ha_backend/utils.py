@@ -109,6 +109,13 @@ def allowed_ips_to_interface_address(allowed_ips):
     return ", ".join(addresses)
 
 
+def check_apply_config_necessary():
+    clients = dump(db.clients.find())
+    clients_applied = dump(db.clients_applied.find())
+    ignores_keys = ["id", "title"]
+    return remove_keys(clients, ignores_keys) != remove_keys(clients_applied, ignores_keys)
+
+
 def render_and_run_ansible():
     clients = dump(db.clients.find())
 
@@ -120,7 +127,7 @@ def render_and_run_ansible():
     with open(ansible_config_path, "w") as f:
         f.write(ansible_config)
 
-    run_playbook.delay(playbook="apply-config.yml", clients=clients)
+    return run_playbook.delay(playbook="apply-config.yml", clients=clients)
 
 
 def get_changed_keys(client_old, client_new):

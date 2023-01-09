@@ -1,4 +1,7 @@
+import time
 from threading import Thread
+
+from celery.result import AsyncResult
 
 from wg_ha_backend import app, celery, db, socketio
 from wg_ha_backend.utils import dump
@@ -54,6 +57,21 @@ def celery_monitor():
         recv.capture(limit=None, timeout=None, wakeup=True)
 
 
+def apply_clients():
+    from wg_ha_backend.utils import render_and_run_ansible, check_apply_config_necessary
+
+    while True:
+        if check_apply_config_necessary():
+            # start task
+            task = render_and_run_ansible()
+            task_id = task.task_id
+            # wait until task is finished
+            while not AsyncResult(task_id).ready():
+                time.sleep(1)
+        # wait before next check
+        time.sleep(1)
+
+
 def create_app():
     # init collection server
     if not db.server.find_one({}):
@@ -77,7 +95,10 @@ def create_app():
     #         # TODO: title and private_key missing
     #         db.clients.insert_one(peer)
 
-    celery_thread = Thread(target=celery_monitor, daemon=True)
-    celery_thread.start()
+    celery_monitor_thread = Thread(target=celery_monitor, daemon=True)
+    celery_monitor_thread.start()
+
+    apply_clients_thread = Thread(target=apply_clients, daemon=True)
+    apply_clients_thread.start()
 
     return app
