@@ -47,7 +47,7 @@ services:
     image: app
     restart: unless-stopped
     ports:
-      - 5555:5555
+      - "5555:5555"
     environment:
       CELERY_BROKER_URL: redis://redis
       CELERY_RESULT_BACKEND: redis://redis
@@ -64,7 +64,7 @@ services:
     image: app
     restart: unless-stopped
     ports:
-      - 5000:5000
+      - "5000:5000"
     environment:
       ANSIBLE_PROJECT_PATH: /ansible
       CELERY_BROKER_URL: redis://redis

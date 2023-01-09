@@ -4,6 +4,11 @@ from functools import wraps
 from flask import request
 from keycloak.keycloak_openid import KeycloakOpenID
 
+
+KEYCLOAK_ROLE_USER = "app-user"
+KEYCLOAK_ROLE_ADMIN = "app-admin"
+
+
 def get_keycloak_roles():
     authorization = request.headers.get("Authorization")
     token = ""
@@ -38,7 +43,7 @@ def user_required():
         @wraps(fn)
         def decorator(*args, **kwargs):
             roles = get_keycloak_roles()
-            if "app-user" in roles:
+            if KEYCLOAK_ROLE_USER in roles or KEYCLOAK_ROLE_ADMIN in roles:
                 return fn(*args, **kwargs)
             else:
                 return "Unauthorized", 401
@@ -51,7 +56,7 @@ def admin_required():
         @wraps(fn)
         def decorator(*args, **kwargs):
             roles = get_keycloak_roles()
-            if "app-admin" in roles:
+            if KEYCLOAK_ROLE_ADMIN in roles:
                 return fn(*args, **kwargs)
             else:
                 return "Unauthorized", 401
