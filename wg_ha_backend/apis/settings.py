@@ -1,7 +1,7 @@
 from bson import ObjectId
 from flask_restx import Resource, reqparse, Namespace
 
-from wg_ha_backend import db, socketio
+from wg_ha_backend import db, emit
 from wg_ha_backend.keycloak import admin_required
 from wg_ha_backend.utils import dump
 
@@ -32,6 +32,6 @@ class Settings(Resource):
         }
         db.settings.update_one({"_id": ObjectId(id)}, {'$set': new_settings})
 
-        socketio.emit("setSettings", new_settings)
+        emit("setSettings", new_settings, to="admin")
 
         return {}

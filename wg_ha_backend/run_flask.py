@@ -3,8 +3,9 @@ from threading import Thread
 
 from celery.result import AsyncResult
 
-from wg_ha_backend import app, celery, db, socketio
+from wg_ha_backend import app, celery, db, socketio, emit
 from wg_ha_backend.utils import dump
+from wg_ha_backend.keycloak import get_keycloak_user_id
 
 
 def celery_monitor():
@@ -30,25 +31,37 @@ def celery_monitor():
             if event_type in celery_events_to_state:
                 task_state = celery_events_to_state[event_type]
 
-                socketio.emit(event_type, {
+                # only admin can see tasks
+                emit(event_type, {
                     "uuid": task.uuid,
                     "name": task.name,
                     "received": task.received,
                     "state": task_state,
                     **task.info()
-                })
+                }, to="admin")
             elif event_type == "task-progress":
-                socketio.emit(event_type, {
+                # only admin can see tasks
+                emit(event_type, {
                     "uuid": task.uuid,
                     "output": event["output"]
-                })
+                }, to="admin")
             elif event_type == "clients-applied":
                 db.clients_applied.delete_many({})
                 data = [{k:v for k, v in client.items() if k != "id"} for client in event["clients"]]
                 if data:
                     db.clients_applied.insert_many(data)
 
-                socketio.emit("setClientsApplied", dump(db.clients_applied.find()))
+                # send clientsApplied to the client owners and admins
+                clients_applied = dump(db.clients_applied.find())
+                clients_applied_by_user_id = {}
+                for client_applied in clients_applied:
+                    user_id = client_applied["user_id"]
+                    if user_id not in clients_applied_by_user_id:
+                        clients_applied_by_user_id[user_id] = []
+                    clients_applied_by_user_id[user_id].append(client_applied)
+                for user_id in clients_applied_by_user_id:
+                    emit("setClientsApplied", clients_applied_by_user_id[user_id], to=user_id)
+                emit("setClientsApplied", clients_applied, to="admin")
 
     with celery.connection() as connection:
         recv = celery.events.Receiver(connection, handlers={

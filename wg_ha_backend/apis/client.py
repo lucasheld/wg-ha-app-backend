@@ -2,7 +2,7 @@ from bson import ObjectId
 from flask import Response
 from flask_restx import Resource, reqparse, Namespace
 
-from wg_ha_backend import db, socketio
+from wg_ha_backend import db, socketio, emit
 from wg_ha_backend.keycloak import user_required, admin_required, get_keycloak_user_id
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_changed_keys, dump
@@ -66,7 +66,7 @@ class ClientList(Resource):
         }
         db.clients.insert_one(client)
 
-        socketio.emit("addClient", dump(client))
+        emit("addClient", dump(client), to=[user_id, "admin"])
 
         return {}
 
@@ -98,7 +98,8 @@ class Client(Resource):
         if private_key:
             public_key = Wireguard.gen_public_key(private_key)
 
-        abort_if_public_key_exists(public_key)
+        if client["public_key"] != public_key:
+            abort_if_public_key_exists(public_key)
 
         new_client_args = {
             "id": id,
@@ -120,7 +121,7 @@ class Client(Resource):
         if changed_keys:
             db.clients.update_one({"_id": ObjectId(id)}, {'$set': new_client_without_id})
 
-            socketio.emit("editClient", new_client)
+            emit("editClient", new_client, to=[user_id, "admin"])
         return {}
 
     @api.response(404, 'Not found')
@@ -135,7 +136,7 @@ class Client(Resource):
 
         r = db.clients.delete_one({"_id": ObjectId(id)})
 
-        socketio.emit("deleteClient", id)
+        emit("deleteClient", id, to=[user_id, "admin"])
 
         if r.deleted_count:
             return {}
@@ -166,7 +167,10 @@ class Review(Resource):
 
         db.clients.update_one({"_id": ObjectId(id)}, {'$set': client_without_id})
 
-        socketio.emit("editClient", client)
+        # notify client owner and admins, the current keycloak user is not necessarily the owner of the client
+        user_id = client["user_id"]
+        emit("editClient", client, to=[user_id, "admin"])
+
         return {}
 
 

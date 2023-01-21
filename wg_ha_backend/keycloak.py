@@ -69,3 +69,14 @@ def get_keycloak_user_id():
     if decoded_token is None:
         raise RuntimeError("You must call `@user_required()` or `@admin_required()` before using this method")
     return decoded_token["sub"]
+
+
+def get_keycloak_roles():
+    decoded_token = decode_keycloak_token()
+    if not decoded_token:
+        return []
+    return decoded_token["realm_access"]["roles"]
+
+
+def is_keycloak_admin():
+    return KEYCLOAK_ROLE_ADMIN in get_keycloak_roles()
