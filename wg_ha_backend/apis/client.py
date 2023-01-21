@@ -3,7 +3,7 @@ from flask import Response
 from flask_restx import Resource, reqparse, Namespace
 
 from wg_ha_backend import db, socketio
-from wg_ha_backend.keycloak import user_required, get_keycloak_user_id
+from wg_ha_backend.keycloak import user_required, admin_required, get_keycloak_user_id
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_changed_keys, dump
 
@@ -14,8 +14,9 @@ client_parser.add_argument('title', type=str, help='Title of the client', locati
 client_parser.add_argument('private_key', type=str, help='Private key of the client', location='json')
 client_parser.add_argument('tags', type=list, help='Tags of the client', location='json')
 client_parser.add_argument('services', type=list, help='Services of the client', location='json')
-client_parser.add_argument('permitted', type=str, help='Indicates if the client is permitted and used when generating the WireGuard config. Allowed values: PENDING, ACCEPTED, DECLINED.', location='json')
 
+client_review_parser = reqparse.RequestParser()
+client_review_parser.add_argument('permitted', type=str, help='Indicates if the client is permitted and used when generating the WireGuard config. Allowed values: PENDING, ACCEPTED, DECLINED.', location='json')
 
 @api.route("")
 class ClientList(Resource):
@@ -40,12 +41,15 @@ class ClientList(Resource):
         private_key = args["private_key"]
         public_key = Wireguard.gen_public_key(private_key)
 
+        settings = dump(db.settings.find_one({}))
+        permitted = "PENDING" if settings["review"] else "ACCEPTED"
+
         client = {
             "title": args["title"],
             "private_key": args["private_key"],
             "tags": args["tags"],
             "services": args["services"],
-            "permitted": args["permitted"],
+            "permitted": permitted,
             "public_key": public_key,
             "allowed_ips": allowed_ips,
             "user_id": user_id
@@ -90,7 +94,6 @@ class Client(Resource):
             "private_key": private_key,
             "tags": args.get("tags"),
             "services": args.get("services"),
-            "permitted": args.get("permitted"),
             "public_key": public_key,
         }
         new_client_args = {k: v for k, v in new_client_args.items() if v is not None}
@@ -124,6 +127,34 @@ class Client(Resource):
         if r.deleted_count:
             return {}
         api.abort(404)
+
+
+@api.route("/<id>/review")
+@api.doc(params={
+    'id': 'Id of the client'
+})
+class Review(Resource):
+    @api.response(404, 'Not found')
+    @api.doc(security='token', parser=client_review_parser)
+    @admin_required()
+    def patch(self, id):
+        client = db.clients.find_one({"_id": ObjectId(id)})
+        client = dump(client)
+
+        if not client:
+            api.abort(404)
+
+        args = client_review_parser.parse_args()
+
+        client.update({
+            "permitted": args["permitted"],
+        })
+        client_without_id = {k: v for k, v in client.items() if k != "id"}
+
+        db.clients.update_one({"_id": ObjectId(id)}, {'$set': client_without_id})
+
+        socketio.emit("editClient", client)
+        return {}
 
 
 @api.route("/<id>/config")
