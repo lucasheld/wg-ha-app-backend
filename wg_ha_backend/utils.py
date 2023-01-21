@@ -110,14 +110,14 @@ def allowed_ips_to_interface_address(allowed_ips):
 
 
 def check_apply_config_necessary():
-    clients = dump(db.clients.find())
+    clients = dump(db.clients.find({"permitted": "ACCEPTED"}))
     clients_applied = dump(db.clients_applied.find())
     ignores_keys = ["id", "title"]
     return remove_keys(clients, ignores_keys) != remove_keys(clients_applied, ignores_keys)
 
 
 def render_and_run_ansible():
-    clients = dump(db.clients.find())
+    clients = dump(db.clients.find({"permitted": "ACCEPTED"}))
 
     env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
     template = env.get_template("wireguard_peers.j2")

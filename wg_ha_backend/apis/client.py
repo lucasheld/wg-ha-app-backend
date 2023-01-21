@@ -14,6 +14,7 @@ client_parser.add_argument('title', type=str, help='Title of the client', locati
 client_parser.add_argument('private_key', type=str, help='Private key of the client', location='json')
 client_parser.add_argument('tags', type=list, help='Tags of the client', location='json')
 client_parser.add_argument('services', type=list, help='Services of the client', location='json')
+client_parser.add_argument('permitted', type=str, help='Indicates if the client is permitted and used when generating the WireGuard config. Allowed values: PENDING, ACCEPTED, DECLINED.', location='json')
 
 
 @api.route("")
@@ -44,6 +45,7 @@ class ClientList(Resource):
             "private_key": args["private_key"],
             "tags": args["tags"],
             "services": args["services"],
+            "permitted": args["permitted"],
             "public_key": public_key,
             "allowed_ips": allowed_ips,
             "user_id": user_id
@@ -67,6 +69,8 @@ class Client(Resource):
         user_id = get_keycloak_user_id()
 
         client = db.clients.find_one({"_id": ObjectId(id)})
+        client = dump(client)
+
         if not client:
             api.abort(404)
 
@@ -76,20 +80,24 @@ class Client(Resource):
         args = client_parser.parse_args()
 
         private_key = args.get("private_key")
-        public_key = client["public_key"]
+        public_key = None
         if private_key:
             public_key = Wireguard.gen_public_key(private_key)
-        new_client = {
+
+        new_client_args = {
             "id": id,
             "title": args.get("title"),
             "private_key": private_key,
             "tags": args.get("tags"),
             "services": args.get("services"),
+            "permitted": args.get("permitted"),
             "public_key": public_key,
-            "allowed_ips": client["allowed_ips"],
-            "user_id": client["user_id"]
         }
-        new_client = {k: v for k, v in new_client.items() if v is not None}
+        new_client_args = {k: v for k, v in new_client_args.items() if v is not None}
+
+        new_client = {k: v for k, v in client.items()}
+        new_client.update(new_client_args)
+
         new_client_without_id = {k: v for k, v in new_client.items() if k != "id"}
 
         changed_keys = get_changed_keys(client, new_client_without_id)
