@@ -30,7 +30,7 @@ class Settings(Resource):
         new_settings = {
             "review": args["review"]
         }
-        db.clients.update_one({"_id": ObjectId(id)}, {'$set': new_settings})
+        db.settings.update_one({"_id": ObjectId(id)}, {'$set': new_settings})
 
         socketio.emit("setSettings", new_settings)
 
