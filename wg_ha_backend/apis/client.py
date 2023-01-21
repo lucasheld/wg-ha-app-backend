@@ -3,7 +3,7 @@ from flask import Response
 from flask_restx import Resource, reqparse, Namespace
 
 from wg_ha_backend import db, socketio, emit
-from wg_ha_backend.keycloak import user_required, admin_required, get_keycloak_user_id
+from wg_ha_backend.keycloak import user_required, admin_required, get_keycloak_user_id, is_keycloak_admin
 from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_changed_keys, dump
 
@@ -26,7 +26,8 @@ def abort_if_public_key_exists(public_key):
 
 def get_default_permitted_value():
     settings = dump(db.settings.find_one({}))
-    return "PENDING" if settings["review"] else "ACCEPTED"
+    need_review = settings["review"] and not is_keycloak_admin()
+    return "PENDING" if need_review else "ACCEPTED"
 
 
 @api.route("")
@@ -66,7 +67,7 @@ class ClientList(Resource):
         }
         db.clients.insert_one(client)
 
-        emit("addClient", dump(client), to=[user_id, "admin"])
+        emit("addClient", dump(client), to=user_id, admins=True)
 
         return {}
 
@@ -121,7 +122,7 @@ class Client(Resource):
         if changed_keys:
             db.clients.update_one({"_id": ObjectId(id)}, {'$set': new_client_without_id})
 
-            emit("editClient", new_client, to=[user_id, "admin"])
+            emit("editClient", new_client, to=user_id, admins=True)
         return {}
 
     @api.response(404, 'Not found')
@@ -131,12 +132,12 @@ class Client(Resource):
         user_id = get_keycloak_user_id()
 
         client = db.clients.find_one({"_id": ObjectId(id)})
-        if client["user_id"] != user_id:
+        if client["user_id"] != user_id and not is_keycloak_admin():
             api.abort(401)
 
         r = db.clients.delete_one({"_id": ObjectId(id)})
 
-        emit("deleteClient", id, to=[user_id, "admin"])
+        emit("deleteClient", id, to=user_id, admins=True)
 
         if r.deleted_count:
             return {}
@@ -169,7 +170,7 @@ class Review(Resource):
 
         # notify client owner and admins, the current keycloak user is not necessarily the owner of the client
         user_id = client["user_id"]
-        emit("editClient", client, to=[user_id, "admin"])
+        emit("editClient", client, to=user_id, admins=True)
 
         return {}
 

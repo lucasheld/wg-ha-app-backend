@@ -38,13 +38,13 @@ def celery_monitor():
                     "received": task.received,
                     "state": task_state,
                     **task.info()
-                }, to="admin")
+                }, admins=True)
             elif event_type == "task-progress":
                 # only admin can see tasks
                 emit(event_type, {
                     "uuid": task.uuid,
                     "output": event["output"]
-                }, to="admin")
+                }, admins=True)
             elif event_type == "clients-applied":
                 db.clients_applied.delete_many({})
                 data = [{k:v for k, v in client.items() if k != "id"} for client in event["clients"]]
@@ -61,7 +61,7 @@ def celery_monitor():
                     clients_applied_by_user_id[user_id].append(client_applied)
                 for user_id in clients_applied_by_user_id:
                     emit("setClientsApplied", clients_applied_by_user_id[user_id], to=user_id)
-                emit("setClientsApplied", clients_applied, to="admin")
+                emit("setClientsApplied", clients_applied, admins=True)
 
     with celery.connection() as connection:
         recv = celery.events.Receiver(connection, handlers={

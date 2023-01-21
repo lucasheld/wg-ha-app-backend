@@ -32,6 +32,6 @@ class Settings(Resource):
         }
         db.settings.update_one({"_id": ObjectId(id)}, {'$set': new_settings})
 
-        emit("setSettings", new_settings, to="admin")
+        emit("setSettings", new_settings, admins=True)
 
         return {}
