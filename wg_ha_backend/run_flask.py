@@ -95,6 +95,12 @@ def create_app():
     #         # TODO: title and private_key missing
     #         db.clients.insert_one(peer)
 
+    # init collection settings
+    if not db.settings.find_one({}):
+        db.settings.insert_one({
+            "review": False
+        })
+
     celery_monitor_thread = Thread(target=celery_monitor, daemon=True)
     celery_monitor_thread.start()
 

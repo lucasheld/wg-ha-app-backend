@@ -19,6 +19,10 @@ def event_connect():
     socketio.emit("setClients", dump(db.clients.find({"user_id": user_id})))
     socketio.emit("setClientsApplied", dump(db.clients_applied.find({"user_id": user_id})))
 
+    settings = dump(db.settings.find_one({}))
+    settings.pop("id")
+    socketio.emit("setSettings", settings)
+
 
 # namespaces are using socketio
 from .apis import api
