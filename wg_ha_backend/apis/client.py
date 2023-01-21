@@ -24,6 +24,11 @@ def abort_if_public_key_exists(public_key):
         api.abort(400, "Another client with the same public key already exists.")
 
 
+def get_default_permitted_value():
+    settings = dump(db.settings.find_one({}))
+    return "PENDING" if settings["review"] else "ACCEPTED"
+
+
 @api.route("")
 class ClientList(Resource):
     @api.doc(security='token')
@@ -49,15 +54,12 @@ class ClientList(Resource):
 
         abort_if_public_key_exists(public_key)
 
-        settings = dump(db.settings.find_one({}))
-        permitted = "PENDING" if settings["review"] else "ACCEPTED"
-
         client = {
             "title": args["title"],
             "private_key": args["private_key"],
             "tags": args["tags"],
             "services": args["services"],
-            "permitted": permitted,
+            "permitted": get_default_permitted_value(),
             "public_key": public_key,
             "allowed_ips": allowed_ips,
             "user_id": user_id
@@ -105,6 +107,7 @@ class Client(Resource):
             "tags": args.get("tags"),
             "services": args.get("services"),
             "public_key": public_key,
+            "permitted": get_default_permitted_value()
         }
         new_client_args = {k: v for k, v in new_client_args.items() if v is not None}
 
