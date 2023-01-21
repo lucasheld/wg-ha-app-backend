@@ -18,6 +18,12 @@ client_parser.add_argument('services', type=list, help='Services of the client',
 client_review_parser = reqparse.RequestParser()
 client_review_parser.add_argument('permitted', type=str, help='Indicates if the client is permitted and used when generating the WireGuard config. Allowed values: PENDING, ACCEPTED, DECLINED.', location='json')
 
+
+def abort_if_public_key_exists(public_key):
+    if public_key and db.clients.find_one({"public_key": public_key}):
+        api.abort(400, "Another client with the same public key already exists.")
+
+
 @api.route("")
 class ClientList(Resource):
     @api.doc(security='token')
@@ -40,6 +46,8 @@ class ClientList(Resource):
 
         private_key = args["private_key"]
         public_key = Wireguard.gen_public_key(private_key)
+
+        abort_if_public_key_exists(public_key)
 
         settings = dump(db.settings.find_one({}))
         permitted = "PENDING" if settings["review"] else "ACCEPTED"
@@ -87,6 +95,8 @@ class Client(Resource):
         public_key = None
         if private_key:
             public_key = Wireguard.gen_public_key(private_key)
+
+        abort_if_public_key_exists(public_key)
 
         new_client_args = {
             "id": id,
