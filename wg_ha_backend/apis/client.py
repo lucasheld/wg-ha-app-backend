@@ -89,7 +89,7 @@ class Client(Resource):
         if not client:
             api.abort(404)
 
-        if client["user_id"] != user_id:
+        if client["user_id"] != user_id and not is_keycloak_admin():
             api.abort(401)
 
         args = client_parser.parse_args()
@@ -122,7 +122,8 @@ class Client(Resource):
         if changed_keys:
             db.clients.update_one({"_id": ObjectId(id)}, {'$set': new_client_without_id})
 
-            emit("editClient", new_client, to=user_id, admins=True)
+            # send message to user who requested the edit, the client owner and all admins
+            emit("editClient", new_client, to=[user_id, client["user_id"]], admins=True)
         return {}
 
     @api.response(404, 'Not found')
@@ -137,7 +138,8 @@ class Client(Resource):
 
         r = db.clients.delete_one({"_id": ObjectId(id)})
 
-        emit("deleteClient", id, to=user_id, admins=True)
+        # send message to user who requested the deletion, the client owner and all admins
+        emit("deleteClient", id, to=[user_id, client["user_id"]], admins=True)
 
         if r.deleted_count:
             return {}

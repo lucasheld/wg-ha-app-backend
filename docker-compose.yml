@@ -73,8 +73,8 @@ services:
       ENV_FILE_LOCATION: "/.env"
       KEYCLOAK_SERVER_URL: http://keycloak:8080
       KEYCLOAK_CLIENT_ID: backend
-      KEYCLOAK_SECRET_KEY: 7da8LMJB07UqTcmD6HYFEvsH309PgrA9
-      KEYCLOAK_REALM_NAME: test
+      KEYCLOAK_SECRET_KEY: 9K2hpnL41KgG9nec3PHcJDdfZsLbd8GH
+      KEYCLOAK_REALM_NAME: wg-app
     volumes:
       - /home/ansible/wg-ha-app/ansible:/ansible
       - /home/lucas/.vault_key:/.vault_key:ro
@@ -106,7 +106,7 @@ services:
       POSTGRES_PASSWORD: password
 
   keycloak:
-    image: quay.io/keycloak/keycloak:20.0.2
+    image: quay.io/keycloak/keycloak:18.0.2
     restart: unless-stopped
     environment:
       DB_VENDOR: POSTGRES

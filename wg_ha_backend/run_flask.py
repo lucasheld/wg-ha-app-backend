@@ -3,9 +3,8 @@ from threading import Thread
 
 from celery.result import AsyncResult
 
-from wg_ha_backend import app, celery, db, socketio, emit
+from wg_ha_backend import app, celery, db, emit
 from wg_ha_backend.utils import dump
-from wg_ha_backend.keycloak import get_keycloak_user_id
 
 
 def celery_monitor():
