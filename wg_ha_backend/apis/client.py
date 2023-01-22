@@ -192,7 +192,7 @@ class Config(Resource):
         if not client:
             api.abort(404)
 
-        if client["user_id"] != user_id:
+        if client["user_id"] != user_id and not is_keycloak_admin():
             api.abort(401)
 
         server = db.server.find_one({})
