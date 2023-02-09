@@ -1,0 +1,9 @@
+---
+wireguard:
+  interface:
+    interface_ips:
+      {%- for interface_ip in server.interface_ips %}
+      - {{interface_ip}}
+      {%- endfor %}
+    private_key: {{server.private_key}}
+

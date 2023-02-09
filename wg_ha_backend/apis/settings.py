@@ -3,7 +3,7 @@ from flask_restx import Resource, reqparse, Namespace
 
 from wg_ha_backend import db, emit
 from wg_ha_backend.keycloak import admin_required
-from wg_ha_backend.utils import Wireguard, dump
+from wg_ha_backend.utils import Wireguard, dump, render_write_ansible_config
 
 api = Namespace('settings', description='Endpoint to manage settings')
 
@@ -35,6 +35,8 @@ class Settings(Resource):
             "server": server
         }
         db.settings.update_one({"_id": ObjectId(id)}, {'$set': new_settings})
+
+        render_write_ansible_config("wireguard_interface.j2", "wireguard_interface", server=server)
 
         emit("setSettings", new_settings, admins=True)
 

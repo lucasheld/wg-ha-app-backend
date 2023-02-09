@@ -116,16 +116,20 @@ def check_apply_config_necessary():
     return remove_keys(clients, ignores_keys) != remove_keys(clients_applied, ignores_keys)
 
 
+def render_write_ansible_config(template_name, config_name, **kwargs):
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
+    template = env.get_template(template_name)
+    ansible_config = template.render(**kwargs)
+
+    ansible_config_path = os.path.join(ANSIBLE_PROJECT_PATH, "group_vars", "all", config_name)
+    with open(ansible_config_path, "w") as f:
+        f.write(ansible_config)
+
+
 def render_and_run_ansible():
     clients = dump(db.clients.find({"permitted": "ACCEPTED"}))
 
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader("./wg_ha_backend/"))
-    template = env.get_template("wireguard_peers.j2")
-    ansible_config = template.render(clients=clients)
-
-    ansible_config_path = os.path.join(ANSIBLE_PROJECT_PATH, "group_vars", "all", "wireguard_peers")
-    with open(ansible_config_path, "w") as f:
-        f.write(ansible_config)
+    render_write_ansible_config("wireguard_peers.j2", "wireguard_peers", clients=clients)
 
     return run_playbook.delay(playbook="apply-config.yml", clients=clients)
 
