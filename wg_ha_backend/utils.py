@@ -43,7 +43,7 @@ def next_num(nums, start=1):
 def generate_next_virtual_client_ips():
     ips = []
 
-    server = dump(db.server.find_one({}))
+    server = dump(db.settings.find_one({}))["server"]
     clients = dump(db.clients.find())
 
     for cidr in server["interface_ips"]:

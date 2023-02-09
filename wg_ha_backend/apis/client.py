@@ -195,8 +195,7 @@ class Config(Resource):
         if client["user_id"] != user_id and not is_keycloak_admin():
             api.abort(401)
 
-        server = db.server.find_one({})
-        server = dump(server)
+        server = dump(db.settings.find_one({}))["server"]
 
         # peer interface
         interface = {

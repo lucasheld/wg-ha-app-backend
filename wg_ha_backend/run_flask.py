@@ -85,18 +85,6 @@ def apply_clients():
 
 
 def create_app():
-    # init collection server
-    if not db.server.find_one({}):
-        db.server.insert_one({
-            "interface_ips": [
-                "10.0.0.1/24",
-                "fdc9:281f:04d7:9ee9::1/112"
-            ],
-            "private_key": "gG38NoQ9UEYzu5LAHzT3n9Kfk6VJz7iDcHEEuNovIHE=",
-            "public_key": "SPlAIzq4bkT3IxpFDnxfxACIaLoYMsv/WjxHTr6ZDR8=",
-            "endpoint": "116.202.189.178:51820"
-        })
-
     # init collection clients
     # if not db.clients.find_one({}):
     #     ansible_config_path = os.path.join(ANSIBLE_PROJECT_PATH, "group_vars", "all", "wireguard_peers")
@@ -110,7 +98,16 @@ def create_app():
     # init collection settings
     if not db.settings.find_one({}):
         db.settings.insert_one({
-            "review": False
+            "review": False,
+            "server": {
+                "interface_ips": [
+                    "10.0.0.1/24",
+                    "fdc9:281f:04d7:9ee9::1/112"
+                ],
+                "private_key": "gG38NoQ9UEYzu5LAHzT3n9Kfk6VJz7iDcHEEuNovIHE=",
+                "public_key": "SPlAIzq4bkT3IxpFDnxfxACIaLoYMsv/WjxHTr6ZDR8=",
+                "endpoint": "116.202.189.178:51820"
+            }
         })
 
     celery_monitor_thread = Thread(target=celery_monitor, daemon=True)
