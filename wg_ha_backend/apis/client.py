@@ -11,7 +11,7 @@ api = Namespace('client', description='Endpoints to manage WireGuard clients')
 
 client_parser = reqparse.RequestParser()
 client_parser.add_argument('title', type=str, help='Title of the client', location='json')
-client_parser.add_argument('private_key', type=str, help='Private key of the client', location='json')
+client_parser.add_argument('public_key', type=str, help='Public key of the client', location='json')
 client_parser.add_argument('tags', type=list, help='Tags of the client', location='json')
 client_parser.add_argument('services', type=list, help='Services of the client', location='json')
 
@@ -50,18 +50,14 @@ class ClientList(Resource):
         interface_ips = generate_next_virtual_client_ips()
         allowed_ips = generate_allowed_ips(interface_ips)
 
-        private_key = args["private_key"]
-        public_key = Wireguard.gen_public_key(private_key)
-
-        abort_if_public_key_exists(public_key)
+        abort_if_public_key_exists(args["public_key"])
 
         client = {
             "title": args["title"],
-            "private_key": args["private_key"],
+            "public_key": args["public_key"],
             "tags": args["tags"],
             "services": args["services"],
             "permitted": get_default_permitted_value(),
-            "public_key": public_key,
             "allowed_ips": allowed_ips,
             "user_id": user_id
         }
@@ -94,10 +90,7 @@ class Client(Resource):
 
         args = client_parser.parse_args()
 
-        private_key = args.get("private_key")
-        public_key = None
-        if private_key:
-            public_key = Wireguard.gen_public_key(private_key)
+        public_key = args.get("public_key")
 
         if client["public_key"] != public_key:
             abort_if_public_key_exists(public_key)
@@ -105,10 +98,9 @@ class Client(Resource):
         new_client_args = {
             "id": id,
             "title": args.get("title"),
-            "private_key": private_key,
+            "public_key": public_key,
             "tags": args.get("tags"),
             "services": args.get("services"),
-            "public_key": public_key,
             "permitted": get_default_permitted_value()
         }
         new_client_args = {k: v for k, v in new_client_args.items() if v is not None}
@@ -200,10 +192,10 @@ class Config(Resource):
         # peer interface
         interface = {
             "address": allowed_ips_to_interface_address(client["allowed_ips"]),
-            "private_key": client["private_key"],
+            "private_key": "INSERT_PRIVATE_KEY",
         }
         peers = [{
-            "public_key": server["public_key"],
+            "public_key": Wireguard.gen_public_key(server["private_key"]),
             "endpoint": server["endpoint"],
         }]
 

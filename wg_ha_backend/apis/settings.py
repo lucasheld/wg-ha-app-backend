@@ -29,7 +29,6 @@ class Settings(Resource):
         id = settings["id"]
 
         server = args["server"]
-        server["public_key"] = Wireguard.gen_public_key(server["private_key"])
 
         new_settings = {
             "review": args["review"],

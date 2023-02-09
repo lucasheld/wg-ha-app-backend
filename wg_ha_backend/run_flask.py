@@ -105,7 +105,6 @@ def create_app():
                     "fdc9:281f:04d7:9ee9::1/112"
                 ],
                 "private_key": "gG38NoQ9UEYzu5LAHzT3n9Kfk6VJz7iDcHEEuNovIHE=",
-                "public_key": "SPlAIzq4bkT3IxpFDnxfxACIaLoYMsv/WjxHTr6ZDR8=",
                 "endpoint": "116.202.189.178:51820"
             }
         })
