@@ -4,7 +4,7 @@ from flask_restx import Resource, reqparse, Namespace
 
 from wg_ha_backend import db, socketio, emit
 from wg_ha_backend.keycloak import user_required, admin_required, get_keycloak_user_id, is_keycloak_admin
-from wg_ha_backend.utils import generate_next_virtual_client_ips, generate_allowed_ips, \
+from wg_ha_backend.utils import generate_next_interface_address, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_changed_keys, dump
 
 api = Namespace('client', description='Endpoints to manage WireGuard clients')
@@ -47,8 +47,8 @@ class ClientList(Resource):
 
         args = client_parser.parse_args()
 
-        interface_ips = generate_next_virtual_client_ips()
-        allowed_ips = generate_allowed_ips(interface_ips)
+        interface_address = generate_next_interface_address()
+        allowed_ips = generate_allowed_ips(interface_address)
 
         abort_if_public_key_exists(args["public_key"])
 

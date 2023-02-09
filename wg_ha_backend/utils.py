@@ -40,13 +40,13 @@ def next_num(nums, start=1):
     return num
 
 
-def generate_next_virtual_client_ips():
+def generate_next_interface_address():
     ips = []
 
     server = dump(db.settings.find_one({}))["server"]
     clients = dump(db.clients.find())
 
-    for cidr in server["interface_ips"]:
+    for cidr in server["address"]:
         ip = cidr.split("/")[0]
         ips.append(ip)
 

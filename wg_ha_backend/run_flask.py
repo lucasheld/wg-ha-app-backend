@@ -100,7 +100,7 @@ def create_app():
         db.settings.insert_one({
             "review": False,
             "server": {
-                "interface_ips": [
+                "address": [
                     "10.0.0.1/24",
                     "fdc9:281f:04d7:9ee9::1/112"
                 ],
