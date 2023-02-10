@@ -2,7 +2,7 @@ from bson import ObjectId
 from flask import Response
 from flask_restx import Resource, reqparse, Namespace
 
-from wg_ha_backend import db, socketio, emit
+from wg_ha_backend import db, emit
 from wg_ha_backend.keycloak import user_required, admin_required, get_keycloak_user_id, is_keycloak_admin
 from wg_ha_backend.utils import generate_next_interface_address, generate_allowed_ips, \
     generate_wireguard_config, allowed_ips_to_interface_address, Wireguard, get_changed_keys, dump
@@ -14,6 +14,7 @@ client_parser.add_argument('title', type=str, help='Title of the client', locati
 client_parser.add_argument('public_key', type=str, help='Public key of the client', location='json')
 client_parser.add_argument('tags', type=list, help='Tags of the client', location='json')
 client_parser.add_argument('services', type=list, help='Services of the client', location='json')
+client_parser.add_argument('subnet', type=str, help='Subnet of the client interface ip address', location='json')
 
 client_review_parser = reqparse.RequestParser()
 client_review_parser.add_argument('permitted', type=str, help='Indicates if the client is permitted and used when generating the WireGuard config. Allowed values: PENDING, ACCEPTED, DECLINED.', location='json')
@@ -47,7 +48,8 @@ class ClientList(Resource):
 
         args = client_parser.parse_args()
 
-        interface_address = generate_next_interface_address()
+        subnet = args.get("subnet", 0)
+        interface_address = generate_next_interface_address(subnet)
         allowed_ips = generate_allowed_ips(interface_address)
 
         abort_if_public_key_exists(args["public_key"])
@@ -57,6 +59,7 @@ class ClientList(Resource):
             "public_key": args["public_key"],
             "tags": args["tags"],
             "services": args["services"],
+            "subnet": args["subnet"],
             "permitted": get_default_permitted_value(),
             "allowed_ips": allowed_ips,
             "user_id": user_id
@@ -101,6 +104,7 @@ class Client(Resource):
             "public_key": public_key,
             "tags": args.get("tags"),
             "services": args.get("services"),
+            "subnet": args.get("subnet"),
             "permitted": get_default_permitted_value()
         }
         new_client_args = {k: v for k, v in new_client_args.items() if v is not None}

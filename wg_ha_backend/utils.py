@@ -40,7 +40,7 @@ def next_num(nums, start=1):
     return num
 
 
-def generate_next_interface_address():
+def generate_next_interface_address(subnet=0):
     ips = []
 
     server = dump(db.settings.find_one({}))["server"]
@@ -64,11 +64,9 @@ def generate_next_interface_address():
 
     new_host_num = next_num(host_nums)
 
-    # TODO: add support for more clients by using another subnet
-
     return [
-        CIDR(f"10.0.0.{new_host_num}/32"),
-        CIDR(f"fdc9:281f:4d7:9ee9::{new_host_num}/128")
+        CIDR(f"10.0.{subnet}.{new_host_num}/32"),
+        CIDR(f"fdc9:281f:4d7:9ee9::{subnet}:{new_host_num}/128")
     ]
 
 
