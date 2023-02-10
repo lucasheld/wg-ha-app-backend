@@ -4,6 +4,7 @@ from .client import api as client_namespace
 from .inventory import api as inventory_namespace
 from .playbook import api as playbook_namespace
 from .settings import api as settings_namespace
+from .custom_rule import api as custom_rule_namespace
 
 api = Api(
     title="Backend REST API",
@@ -22,3 +23,4 @@ api.add_namespace(client_namespace)
 api.add_namespace(inventory_namespace)
 api.add_namespace(playbook_namespace)
 api.add_namespace(settings_namespace)
+api.add_namespace(custom_rule_namespace)

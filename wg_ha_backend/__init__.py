@@ -42,6 +42,8 @@ def event_connect():
         settings = dump(db.settings.find_one({}))
         settings.pop("id")
         emit("setSettings", settings, to=user_id)
+
+        emit("setCustomRules", dump(db.custom_rules.find()), to=user_id)
     else:
         emit("setClients", dump(db.clients.find({"user_id": user_id})), to=user_id)
         emit("setClientsApplied", dump(db.clients_applied.find({"user_id": user_id})), to=user_id)

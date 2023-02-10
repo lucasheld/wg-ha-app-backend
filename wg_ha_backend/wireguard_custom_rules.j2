@@ -1,0 +1,14 @@
+---
+wireguard:
+  custom_rules:
+    {%- for custom_rule in custom_rules %}
+    - title: {{custom_rule.title}}
+      type: {{custom_rule.type}}
+      src: {{custom_rule.src}}
+      dst: {{custom_rule.dst}}
+      protocol: {{custom_rule.protocol}}
+      {%- if custom_rule.port %}
+      port: {{custom_rule.port}}
+      {%- endif %}
+    {%- endfor %}
+
