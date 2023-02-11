@@ -3,7 +3,7 @@ from flask_restx import Resource, reqparse, Namespace
 
 from wg_ha_backend import db, emit
 from wg_ha_backend.keycloak import admin_required
-from wg_ha_backend.utils import Wireguard, dump, render_write_ansible_config
+from wg_ha_backend.utils import dump, render_write_ansible_config
 
 api = Namespace('settings', description='Endpoint to manage settings')
 

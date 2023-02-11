@@ -1,10 +1,10 @@
 from flask_restx import Api
 
 from .client import api as client_namespace
+from .custom_rule import api as custom_rule_namespace
 from .inventory import api as inventory_namespace
 from .playbook import api as playbook_namespace
 from .settings import api as settings_namespace
-from .custom_rule import api as custom_rule_namespace
 
 api = Api(
     title="Backend REST API",

@@ -98,6 +98,12 @@ class Client(Resource):
         if client["public_key"] != public_key:
             abort_if_public_key_exists(public_key)
 
+        subnet = args.get("subnet", 0)
+        allowed_ips = client["allowed_ips"]
+        if client["subnet"] != subnet:
+            interface_address = generate_next_interface_address(subnet)
+            allowed_ips = generate_allowed_ips(interface_address)
+
         new_client_args = {
             "id": id,
             "title": args.get("title"),
@@ -105,7 +111,8 @@ class Client(Resource):
             "tags": args.get("tags"),
             "services": args.get("services"),
             "subnet": args.get("subnet"),
-            "permitted": get_default_permitted_value()
+            "permitted": get_default_permitted_value(),
+            "allowed_ips": allowed_ips
         }
         new_client_args = {k: v for k, v in new_client_args.items() if v is not None}
 
