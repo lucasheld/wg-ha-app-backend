@@ -58,9 +58,11 @@ def generate_next_interface_address(subnet=0):
     host_nums = []
     for ip in ips:
         if get_ip_version(ip) == 4:
-            match = re.search(r'\d+\.\d+\.\d+\.(\d+)$', ip)
-            host_id = int(match.group(1))
-            host_nums.append(host_id)
+            match = re.search(r'\d+\.\d+\.(\d+)\.(\d+)$', ip)
+            subnet_id = int(match.group(1))
+            host_id = int(match.group(2))
+            if subnet_id == int(subnet):
+                host_nums.append(host_id)
 
     new_host_num = next_num(host_nums)
 
